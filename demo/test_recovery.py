@@ -2,10 +2,10 @@ import numpy as np
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
 
-from colpackpy2 import get_seeds_from_pattern   # returns (S, colors, comps)
-from recovery2 import recover_matrix            # your function we modified
+from colpackpy.coloring import get_seeds_from_pattern   # returns (S, colors, comps)
+from colpackpy.recovery import recover_matrix            # your function we modified
 
-ALGORITHM = "STAR"
+ALGORITHM = "ACYCLIC"
 ORDERING  = "SMALLEST_LAST"
 
 # ---- helper: build a random sparse SPD matrix (Hessian-like) ----

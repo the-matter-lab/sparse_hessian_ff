@@ -5,12 +5,12 @@
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(colpackpy2, m) {
+PYBIND11_MODULE(coloring, m) {
     m.def("get_seeds_from_pattern",
     [](const std::vector<std::pair<int, int>>& edges,
        int n,
        const std::string& ordering,
-       const std::string& method) {
+       std::string method) {
         // Validate ordering
         const std::set<std::string> valid_orderings = {
             "NATURAL","LARGEST_FIRST","SMALLEST_LAST","INCIDENCE_DEGREE",
@@ -19,9 +19,11 @@ PYBIND11_MODULE(colpackpy2, m) {
         if (!valid_orderings.count(ordering))
             throw std::invalid_argument("Invalid ordering parameter");
 
+        if (method == "ACYCLIC") {
+            method = "ACYCLIC_FOR_INDIRECT_RECOVERY";
+        }
         // Validate method
-        const std::set<std::string> valid_methods = {
-            "DISTANCE_TWO", "STAR", "ACYCLIC_FOR_INDIRECT_RECOVERY"};
+        const std::set<std::string> valid_methods = {"DISTANCE_TWO", "STAR", "ACYCLIC_FOR_INDIRECT_RECOVERY"};
         if (!valid_methods.count(method))
             throw std::invalid_argument("Invalid method parameter");
 

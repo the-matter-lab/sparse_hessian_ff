@@ -4,25 +4,11 @@ from pybind11.setup_helpers import Pybind11Extension, build_ext
 colpack_root = "/h/28/lucahiede/Projects/sparse_hessian_ff/ColPack"
 
 
-ext = Pybind11Extension(
-    "colpackpy",
-    ["colpackpy.cpp", "utilities.cpp", "colpackpy2.cpp"],
-    include_dirs=[
-        f"{colpack_root}/build/cmake/mywork/include/ColPack_headers",
-        f"{colpack_root}/src/Utilities",
-        f"{colpack_root}/src/GeneralGraphColoring",
-        f"{colpack_root}/src/BipartiteGraphBicoloring",
-        f"{colpack_root}/src/BipartiteGraphPartialColoring",
-        f"{colpack_root}/src/Recovery",
-    ],
-    library_dirs=[f"{colpack_root}/build/cmake/mywork/lib/shared_library"],
-    libraries=["ColPack", "dl"],
-    extra_compile_args=["-O3", "-std=c++17"],
-)
 
-ext2 = Pybind11Extension(
-    "colpackpy2",
-    ["colpackpy2.cpp", "utilities.cpp"],
+
+ext = Pybind11Extension(
+    "coloring",
+    ["coloring.cpp", "utilities.cpp"],
     include_dirs=[
         f"{colpack_root}/build/cmake/mywork/include/ColPack_headers",
         f"{colpack_root}/src/Utilities",
@@ -37,9 +23,9 @@ ext2 = Pybind11Extension(
 )
 
 setup(
-    name="colpackpy",
+    name="coloring",
     version="0.0.1",
-    ext_modules=[ext, ext2],
+    ext_modules=[ext],
     cmdclass={"build_ext": build_ext},
 )
 
