@@ -10,10 +10,24 @@
             "type": "debugpy",
             "request": "launch",
             "python": "/h/28/lucahiede/anaconda3/envs/sparse_hessian_ff/bin/python",
-            "program": "${workspaceFolder}/test_distance_two_recovery.py",
+            "program": "${workspaceFolder}/demo/test_recovery.py",
             "console": "integratedTerminal",
             "env": {
-                "LD_LIBRARY_PATH": "/h/28/lucahiede/Projects/sparse_hessian_ff/ColPack/build/cmake/mywork/lib/shared_library"
+                "PYTHONPATH": "PYTHONPATH=$PYTHONPATH:/h/28/lucahiede/Projects/sparse_hessian_ff",
+                "LD_LIBRARY_PATH": "$LD_LIBRARY_PATH:/h/28/lucahiede/Projects/sparse_hessian_ff/ColPack/build/cmake/mywork/lib/shared_library"
+
+            }
+        },
+        {
+            "name": "Hessian Timing",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/h/28/lucahiede/anaconda3/envs/sparse_hessian_ff/bin/python",
+            "program": "${workspaceFolder}/matgl/examples/sparse_hessian_timing.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "PYTHONPATH=$PYTHONPATH:/h/28/lucahiede/Projects/sparse_hessian_ff",
+                "LD_LIBRARY_PATH": "$LD_LIBRARY_PATH:/h/28/lucahiede/Projects/sparse_hessian_ff/ColPack/build/cmake/mywork/lib/shared_library"
             }
         }
     ]

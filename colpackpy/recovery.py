@@ -49,6 +49,13 @@ def recover_matrix(
     A_rec : (n, n) array (dtype)
     """
     edges = np.asarray(edges, dtype=np.intp)
+    # 1) drop self-loops if any
+    edges = edges[edges[:, 0] != edges[:, 1]]
+    # 2) canonicalize each pair so (min,max)
+    edges = np.sort(edges, axis=1)
+    # 3) deduplicate
+    edges = np.unique(edges, axis=0)
+    # 4) unpack
     u = edges[:, 0]
     v = edges[:, 1]
     ii = np.arange(n, dtype=np.intp)
