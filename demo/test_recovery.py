@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from colpackpy.coloring import get_seeds_from_pattern   # returns (S, colors, comps)
 from colpackpy.recovery import recover_matrix            # your function we modified
 
-ALGORITHM = "ACYCLIC"
+ALGORITHM = "STAR"
 ORDERING  = "SMALLEST_LAST"
 
 # ---- helper: build a random sparse SPD matrix (Hessian-like) ----
@@ -46,38 +46,40 @@ avg_deg = 12
 A, edges = make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=42)
 
 print("n =", n, "nnz =", A.nnz, "avg degree ≈", 2 * len(edges) / n)
-
+A = A.toarray()
 # ---- ColPack seeds (acyclic for indirect recovery) ----
 S, colors, comps = get_seeds_from_pattern(edges, n, ORDERING, ALGORITHM)
 S = np.asarray(S, dtype=float)
 colors = np.asarray(colors, dtype=int)
+
 
 print("Seed matrix shape:", S.shape, "(n_colors =", S.shape[1], ")")
 
 # ---- Compressed evaluation Y = A @ S ----
 B = A @ S
 
+
 # ---- Reconstruct via indirect (acyclic) recovery using cached components ----
 A_rec = recover_matrix(
-    recover_from="ACYCLIC_FOR_INDIRECT_RECOVERY",  # accepted alias
+    recover_from=ALGORITHM,  # accepted alias
     edges=edges,
     n=n,
     B=B,
     vertex_colors=colors,
     acyclic_components=comps,   # use ColPack’s cached two-colored forests
-    reconstruct_sparsely=False,
+    reconstruct_sparsely=True,
     dtype=np.float64,
     verify=True
 )
 
-plt.matshow(A.toarray())
-plt.savefig("A.png")
 
-plt.matshow(A_rec)
-plt.savefig("A_rec.png")
 
 # ---- Check ----
-diff = (A.toarray() - A_rec)
+diff = (A - A_rec)
 print("Max |diff|:", np.abs(diff).max())
 print("RMS error  :", np.sqrt((diff**2).mean()))
-assert np.allclose(A.toarray(), A_rec, rtol=0, atol=1e-10)
+assert np.allclose(A, A_rec, rtol=0, atol=1e-10)
+
+# Before running, do:
+# export PYTHONPATH=$PYTHONPATH:/h/28/lucahiede/Projects/sparse_hessian_ff
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/h/28/lucahiede/Projects/sparse_hessian_ff/ColPack/build/cmake/mywork/lib/shared_library
