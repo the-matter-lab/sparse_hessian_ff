@@ -1,8 +1,0 @@
-coloring.cpp
-pyproject.toml
-setup.py
-utilities.cpp
-coloring.egg-info/PKG-INFO
-coloring.egg-info/SOURCES.txt
-coloring.egg-info/dependency_links.txt
-coloring.egg-info/top_level.txt

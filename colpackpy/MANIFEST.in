@@ -1,0 +1,4 @@
+include *.py
+include *.cpp
+include *.h
+recursive-include ColPack *
