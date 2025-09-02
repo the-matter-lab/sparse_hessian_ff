@@ -157,6 +157,7 @@ class PESCalculator(Calculator):
         self.potential = potential
         self.compute_stress = potential.calc_stresses
         self.compute_hessian = potential.calc_hessian
+        self.return_seed_matrix = potential.return_seed_matrix
         self.compute_magmom = potential.calc_magmom
 
         # Handle stress unit conversion
@@ -211,7 +212,10 @@ class PESCalculator(Calculator):
             )
             self.results.update(stress=stresses_np * self.stress_weight)
         if self.compute_hessian:
-            self.results.update(hessian=calc_result[3].detach().cpu().numpy())
+            if self.return_seed_matrix:
+                self.results.update(hessian=calc_result[3][0].detach().cpu().numpy(), seed_matrix=calc_result[3][1].detach().cpu().numpy())
+            else:
+                self.results.update(hessian=calc_result[3].detach().cpu().numpy())
         if self.compute_magmom:
             self.results.update(magmoms=calc_result[4].detach().cpu().numpy())
 
