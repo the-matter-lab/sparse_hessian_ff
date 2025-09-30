@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
 import torch
 from torch import nn
 from torch.autograd import grad
@@ -20,7 +21,6 @@ from scipy.sparse import coo_matrix
 
 if TYPE_CHECKING:
     import dgl
-    import numpy as np
 
 
 def hvp(f, primals, tangents):
@@ -137,7 +137,7 @@ class Potential(nn.Module, IOMixIn):
         super().__init__()
         self.save_args(locals())
         self.model = model
-        self.calc_forces = calc_forces
+        self.calc_forces = calc_forces or calc_hessian # if hessian is calculated, forces are also calculated
         self.calc_stresses = calc_stresses
         self.calc_hessian = calc_hessian
         self.calc_magmom = calc_magmom
@@ -225,19 +225,20 @@ class Potential(nn.Module, IOMixIn):
             )
             forces = -grads[0]
 
-        if self.calc_hessian:
-            if self.hessian_algorithm == "naive":
-                r = grads[0].view(-1)
-                s = r.size(0)
-                hessian = total_energies.new_zeros((s, s))
-                for iatom in range(s):
-                    tmp = grad([r[iatom]], g.ndata["pos"], retain_graph=iatom < s)[0]
-                    if tmp is not None:
-                        hessian[iatom] = tmp.view(-1)
-                if self.return_seed_matrix:
-                    hessian = (hessian, torch.eye(hessian.shape[0], device=hessian.device))
-            elif self.hessian_algorithm in ["star", "acyclic"]:
-                hessian = self._compute_sparse_hessian(total_energies, g.ndata["pos"], g, self.hessian_algorithm)
+            if self.calc_hessian:
+                if self.hessian_algorithm == "naive":
+                    r = grads[0].view(-1)
+                    s = r.size(0)
+                    hessian = total_energies.new_zeros((s, s))
+                    for iatom in range(s):
+                        tmp = grad([r[iatom]], g.ndata["pos"], retain_graph=iatom < s)[0]
+                        if tmp is not None:
+                            hessian[iatom] = tmp.view(-1)
+                    if self.return_seed_matrix:
+                        hessian = (hessian, torch.eye(hessian.shape[0], device=hessian.device))
+                elif self.hessian_algorithm in ["star", "acyclic"]:
+                    # Pass the already computed gradients to avoid recomputation
+                    hessian = self._compute_sparse_hessian(total_energies, g.ndata["pos"], g, self.hessian_algorithm, grads[0])
 
         if self.calc_stresses:
             volume = (
@@ -258,7 +259,7 @@ class Potential(nn.Module, IOMixIn):
 
         return total_energies, forces, stresses, hessian
     
-    def _compute_sparse_hessian(self, energy, positions, g, algorithm):
+    def _compute_sparse_hessian(self, energy, positions, g, algorithm, precomputed_grads=None):
         """Compute sparse hessian using ColPack coloring algorithms.
         
         Args:
@@ -266,11 +267,11 @@ class Potential(nn.Module, IOMixIn):
             positions: Atomic positions tensor
             g: DGL graph
             algorithm: Coloring algorithm ("star" or "acyclic")
+            precomputed_grads: Already computed gradients to avoid recomputation
             
         Returns:
             Hessian tensor (sparse or dense based on hessian_return_type)
         """
-        import numpy as np
         
         # Create sparsity pattern from graph based on model layers
         num_layers = len(self.model.layers) if hasattr(self.model, 'layers') else 1
@@ -280,45 +281,44 @@ class Potential(nn.Module, IOMixIn):
         ALGORITHM = algorithm.upper()
         ORDERING = "SMALLEST_LAST"
         S, colors, comps = get_seeds_from_pattern(edges, n, ORDERING, ALGORITHM)
+        
+        # Convert to tensor
         S = torch.tensor(S, dtype=positions.dtype, device=positions.device)
         
-        # Store original positions to restore later
-        original_pos = g.ndata["pos"].clone()
-        
         # Compute compressed HVPs: Y = H @ S
-        pos_flat = positions.view(-1)
         Y = torch.zeros(n, S.shape[1], dtype=positions.dtype, device=positions.device)
         
-        # Create energy function for HVP
-        def energy_fn(pos):
-            pos_reshaped = pos.view(positions.shape)
-            g.ndata["pos"] = pos_reshaped
-            
-            # Update edge features that depend on positions
-            if "pbc_offshift" in g.edata:
-                g.edata["pbc_offshift"] = (g.edata["pbc_offset"].unsqueeze(dim=-1) * g.edata["lattice"]).sum(dim=1)
-            
-            # Recompute energy with updated positions
-            new_energy = self.model(g=g, state_attr=None, l_g=None)
-            new_energy = self.data_std * new_energy + self.data_mean
-            
-            if self.calc_repuls:
-                new_energy += self.repuls(self.model.element_types, g)
-            
-            if self.element_refs is not None:
-                property_offset = torch.squeeze(self.element_refs(g))
-                new_energy += property_offset
-                
-            return new_energy.sum()
+        # Use precomputed gradients if available, otherwise compute them
+        if precomputed_grads is not None:
+            r = precomputed_grads.view(-1)
+        else:
+            # Fallback: compute gradients if not provided
+            r = grad(
+                energy,
+                positions,
+                grad_outputs=torch.ones_like(energy),
+                create_graph=True,
+                retain_graph=True,
+            )[0].view(-1)
         
-        # Compute HVPs for each seed vector
+        # Compute HVPs using optimized batched approach
+        # Batch compute all dot products at once
+        grad_seed_products = torch.mv(S.T, r)  # S.T @ r gives us all dot products at once
+        
+        # Compute HVPs in efficient loop
         for i in range(S.shape[1]):
-            seed = S[:, i]
-            func_output, hvp_result = hvp(energy_fn, pos_flat, seed)
-            Y[:, i] = hvp_result
-        
-        # Restore original positions
-        g.ndata["pos"] = original_pos
+            # Use the pre-computed dot product
+            grad_seed_product = grad_seed_products[i]
+            
+            # Compute second derivative (HVP) using existing computation graph
+            hvp_result = grad(
+                grad_seed_product,
+                positions,
+                retain_graph=(i < S.shape[1] - 1)  # Only retain graph if not last iteration
+            )[0]
+            
+            if hvp_result is not None:
+                Y[:, i] = hvp_result.view(-1)
         
         # Recover sparse matrix using colpackpy
         B = np.array(Y.detach().cpu().numpy())
@@ -330,7 +330,7 @@ class Potential(nn.Module, IOMixIn):
             vertex_colors=np.array(colors).astype(int),
             acyclic_components=comps,
             reconstruct_sparsely=(self.hessian_return_type == "sparse"),
-            dtype=np.float64,
+            dtype=np.float32,
             verify=False
         )
         

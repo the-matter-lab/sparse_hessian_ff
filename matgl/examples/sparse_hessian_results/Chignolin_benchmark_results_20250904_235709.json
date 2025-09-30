@@ -1,0 +1,199 @@
+{
+  "dataset": "Chignolin",
+  "timestamp": "20250904_235709",
+  "note": "Results include GPU warm-up before each system. Hessian matrices saved separately as .npy files.",
+  "results": [
+    {
+      "filename": "Coordinates_0.xyz",
+      "n_atoms": 166,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 13.897523880004883,
+          "time_std": 0.0,
+          "times": [
+            13.897523880004883
+          ],
+          "hvp_count": 498,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        },
+        "star": {
+          "method": "star",
+          "time": 11.589919567108154,
+          "time_std": 0.0,
+          "times": [
+            11.589919567108154
+          ],
+          "hvp_count": 384,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 9.31904649734497,
+          "time_std": 0.0,
+          "times": [
+            9.31904649734497
+          ],
+          "hvp_count": 285,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        }
+      }
+    },
+    {
+      "filename": "Coordinates_1000.xyz",
+      "n_atoms": 166,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 13.903231859207153,
+          "time_std": 0.0,
+          "times": [
+            13.903231859207153
+          ],
+          "hvp_count": 498,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        },
+        "star": {
+          "method": "star",
+          "time": 12.77603816986084,
+          "time_std": 0.0,
+          "times": [
+            12.77603816986084
+          ],
+          "hvp_count": 423,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 10.108170509338379,
+          "time_std": 0.0,
+          "times": [
+            10.108170509338379
+          ],
+          "hvp_count": 315,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        }
+      }
+    },
+    {
+      "filename": "Coordinates_5000.xyz",
+      "n_atoms": 166,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 14.088687896728516,
+          "time_std": 0.0,
+          "times": [
+            14.088687896728516
+          ],
+          "hvp_count": 498,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        },
+        "star": {
+          "method": "star",
+          "time": 11.571513175964355,
+          "time_std": 0.0,
+          "times": [
+            11.571513175964355
+          ],
+          "hvp_count": 384,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 9.004064321517944,
+          "time_std": 0.0,
+          "times": [
+            9.004064321517944
+          ],
+          "hvp_count": 282,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        }
+      }
+    },
+    {
+      "filename": "Coordinates_9999.xyz",
+      "n_atoms": 166,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 13.948219299316406,
+          "time_std": 0.0,
+          "times": [
+            13.948219299316406
+          ],
+          "hvp_count": 498,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        },
+        "star": {
+          "method": "star",
+          "time": 7.469810247421265,
+          "time_std": 0.0,
+          "times": [
+            7.469810247421265
+          ],
+          "hvp_count": 252,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 5.1781392097473145,
+          "time_std": 0.0,
+          "times": [
+            5.1781392097473145
+          ],
+          "hvp_count": 162,
+          "hessian_shape": [
+            498,
+            498
+          ],
+          "n_atoms": 166
+        }
+      }
+    }
+  ]
+}

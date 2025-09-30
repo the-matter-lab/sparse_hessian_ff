@@ -18,7 +18,7 @@ pot = matgl.load_model("../pretrained_models/TensorNet-ANI-1x-Subset-PES")
 n_layers = len(pot.model.layers)
 pot.calc_hessian = True
 pot.return_seed_matrix = True
-atoms = read('/h/28/lucahiede/Projects/sparse_hessian_ff/data/water_cluster/32.xyz')
+atoms = read('/h/28/lucahiede/Projects/sparse_hessian_ff/data/water_cluster/76.xyz')
 
 calc = PESCalculator(pot)
 
