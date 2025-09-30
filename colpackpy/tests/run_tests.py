@@ -15,6 +15,12 @@ from typing import Tuple
 from colpackpy.coloring import get_seeds_from_pattern
 from colpackpy.recovery import recover_matrix
 
+try:
+    import torch
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
+
 
 class MatrixTestHelper:
     """Helper class for generating test matrices with known sparsity patterns."""
@@ -454,7 +460,7 @@ class TestDistanceTwoRecovery(unittest.TestCase):
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64,
@@ -481,7 +487,7 @@ class TestDistanceTwoRecovery(unittest.TestCase):
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64
@@ -506,14 +512,16 @@ class TestDistanceTwoRecovery(unittest.TestCase):
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             dtype=np.float64,
             verify=True
         )
         
-        self.assertTrue(np.allclose(A, A_rec, rtol=0, atol=1e-10))
+        # Convert sparse to dense for comparison
+        A_rec_dense = A_rec.toarray() if sp.issparse(A_rec) else A_rec
+        self.assertTrue(np.allclose(A, A_rec_dense, rtol=0, atol=1e-10))
     
     def test_distance_two_diagonal_only(self):
         """Test DISTANCE_TWO on diagonal matrix (edge case: no edges)."""
@@ -530,7 +538,7 @@ class TestDistanceTwoRecovery(unittest.TestCase):
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64
@@ -561,7 +569,7 @@ class TestStarRecovery(unittest.TestCase):
             recover_from="STAR",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64,
@@ -588,7 +596,7 @@ class TestStarRecovery(unittest.TestCase):
             recover_from="STAR",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64
@@ -613,14 +621,16 @@ class TestStarRecovery(unittest.TestCase):
             recover_from="STAR",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             dtype=np.float64,
             verify=True
         )
         
-        self.assertTrue(np.allclose(A, A_rec, rtol=0, atol=1e-10))
+        # Convert sparse to dense for comparison
+        A_rec_dense = A_rec.toarray() if sp.issparse(A_rec) else A_rec
+        self.assertTrue(np.allclose(A, A_rec_dense, rtol=0, atol=1e-10))
     
     def test_star_multiple_orderings(self):
         """Test STAR with different vertex orderings."""
@@ -642,7 +652,7 @@ class TestStarRecovery(unittest.TestCase):
                     recover_from="STAR",
                     edges=edges,
                     n=n,
-                    B=B,
+                    Y=B,
                     vertex_colors=colors,
                     reconstruct_sparsely=False,
                     dtype=np.float64,
@@ -674,7 +684,7 @@ class TestAcyclicRecovery(unittest.TestCase):
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=True,
@@ -683,8 +693,10 @@ class TestAcyclicRecovery(unittest.TestCase):
         )
         
         # Verify accuracy
-        self.assertTrue(np.allclose(A, A_rec, rtol=0, atol=1e-10))
-        max_err = np.abs(A - A_rec).max()
+        # Convert sparse to dense for comparison
+        A_rec_dense = A_rec.toarray() if sp.issparse(A_rec) else A_rec
+        self.assertTrue(np.allclose(A, A_rec_dense, rtol=0, atol=1e-10))
+        max_err = np.abs(A - A_rec_dense).max()
         self.assertLess(max_err, 1e-10)
     
     def test_acyclic_tridiagonal(self):
@@ -702,7 +714,7 @@ class TestAcyclicRecovery(unittest.TestCase):
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=False,
@@ -728,7 +740,7 @@ class TestAcyclicRecovery(unittest.TestCase):
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             acyclic_components=None,
             reconstruct_sparsely=False,
@@ -755,7 +767,7 @@ class TestAcyclicRecovery(unittest.TestCase):
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=True,
@@ -763,7 +775,9 @@ class TestAcyclicRecovery(unittest.TestCase):
             verify=True
         )
         
-        self.assertTrue(np.allclose(A, A_rec, rtol=0, atol=1e-10))
+        # Convert sparse to dense for comparison
+        A_rec_dense = A_rec.toarray() if sp.issparse(A_rec) else A_rec
+        self.assertTrue(np.allclose(A, A_rec_dense, rtol=0, atol=1e-10))
     
     def test_acyclic_indirect_alias(self):
         """Test ACYCLIC_INDIRECT alias for recovery."""
@@ -782,7 +796,7 @@ class TestAcyclicRecovery(unittest.TestCase):
             recover_from="ACYCLIC_INDIRECT",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=False,
@@ -807,7 +821,7 @@ class TestAcyclicRecovery(unittest.TestCase):
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=False,
@@ -836,7 +850,7 @@ class TestRecoveryEdgeCases(unittest.TestCase):
                 recover_from="INVALID_ALGORITHM",
                 edges=edges,
                 n=n,
-                B=B,
+                Y=B,
                 vertex_colors=colors
             )
     
@@ -858,7 +872,7 @@ class TestRecoveryEdgeCases(unittest.TestCase):
                     recover_from=algorithm,
                     edges=edges,
                     n=n,
-                    B=B,
+                    Y=B,
                     vertex_colors=colors
                 )
                 
@@ -881,7 +895,7 @@ class TestRecoveryEdgeCases(unittest.TestCase):
                     recover_from="DISTANCE_TWO",
                     edges=edges,
                     n=n,
-                    B=B,
+                    Y=B,
                     vertex_colors=colors,
                     dtype=dtype
                 )
@@ -917,7 +931,7 @@ class TestRecoveryComparison(unittest.TestCase):
                 recover_from=recovery_alg,
                 edges=edges,
                 n=n,
-                B=B,
+                Y=B,
                 vertex_colors=colors,
                 acyclic_components=comps if recovery_alg == "ACYCLIC" else None,
                 reconstruct_sparsely=False,
@@ -954,7 +968,7 @@ class TestGeneralSymmetricMatrices(unittest.TestCase):
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             verify=True
         )
@@ -979,7 +993,7 @@ class TestGeneralSymmetricMatrices(unittest.TestCase):
             recover_from="STAR",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             verify=True
         )
@@ -1004,7 +1018,7 @@ class TestGeneralSymmetricMatrices(unittest.TestCase):
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             acyclic_components=comps,
             verify=True
@@ -1041,7 +1055,7 @@ class TestStructuredMatrices(unittest.TestCase):
                     recover_from=recovery_alg,
                     edges=edges,
                     n=n,
-                    B=B,
+                    Y=B,
                     vertex_colors=colors,
                     acyclic_components=comps if recovery_alg == "ACYCLIC" else None,
                     verify=True
@@ -1073,7 +1087,7 @@ class TestStructuredMatrices(unittest.TestCase):
                     recover_from=recovery_alg,
                     edges=edges,
                     n=n,
-                    B=B,
+                    Y=B,
                     vertex_colors=colors,
                     acyclic_components=comps if recovery_alg == "ACYCLIC" else None,
                     verify=True
@@ -1100,7 +1114,7 @@ class TestStructuredMatrices(unittest.TestCase):
                     recover_from="DISTANCE_TWO",
                     edges=edges,
                     n=n,
-                    B=B,
+                    Y=B,
                     vertex_colors=colors,
                     verify=True
                 )
@@ -1125,7 +1139,7 @@ class TestStructuredMatrices(unittest.TestCase):
             recover_from="STAR",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             verify=True
         )
@@ -1153,7 +1167,7 @@ class TestStructuredMatrices(unittest.TestCase):
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             acyclic_components=comps,
             verify=True
@@ -1195,7 +1209,7 @@ class TestNumericalChallenges(unittest.TestCase):
                     recover_from=recovery_alg,
                     edges=edges,
                     n=n,
-                    B=B,
+                    Y=B,
                     vertex_colors=colors,
                     acyclic_components=comps if recovery_alg == "ACYCLIC" else None,
                     dtype=np.float64,
@@ -1228,7 +1242,7 @@ class TestNumericalChallenges(unittest.TestCase):
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             verify=True
         )
@@ -1255,13 +1269,307 @@ class TestNumericalChallenges(unittest.TestCase):
                     recover_from="STAR",
                     edges=edges,
                     n=n,
-                    B=B,
+                    Y=B,
                     vertex_colors=colors,
                     verify=True
                 )
                 
                 # Relaxed tolerance for general symmetric matrices
                 self.assertTrue(np.allclose(A, A_rec, rtol=1e-6, atol=1e-6))
+
+
+class TestOutputFormat(unittest.TestCase):
+    """Test suite for verifying correct output formats (sparse vs dense)."""
+    
+    def test_distance_two_dense_output(self):
+        """Test that DISTANCE_TWO returns dense array when reconstruct_sparsely=False."""
+        n = 50
+        avg_deg = 8
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=42)
+        
+        S, colors, _ = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "DISTANCE_TWO")
+        S = np.asarray(S, dtype=float)
+        colors = np.asarray(colors, dtype=int)
+        
+        B = A @ S
+        
+        A_rec = recover_matrix(
+            recover_from="DISTANCE_TWO",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            reconstruct_sparsely=False,
+            dtype=np.float64
+        )
+        
+        # Verify output is dense (numpy ndarray, not scipy sparse)
+        self.assertIsInstance(A_rec, np.ndarray)
+        self.assertFalse(sp.issparse(A_rec))
+        self.assertEqual(A_rec.dtype, np.float64)
+    
+    def test_distance_two_sparse_output(self):
+        """Test that DISTANCE_TWO returns sparse matrix when reconstruct_sparsely=True."""
+        n = 50
+        avg_deg = 8
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=42)
+        
+        S, colors, _ = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "DISTANCE_TWO")
+        S = np.asarray(S, dtype=float)
+        colors = np.asarray(colors, dtype=int)
+        
+        B = A @ S
+        
+        A_rec = recover_matrix(
+            recover_from="DISTANCE_TWO",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            reconstruct_sparsely=True,
+            dtype=np.float64
+        )
+        
+        # Verify output is sparse (scipy sparse matrix)
+        self.assertTrue(sp.issparse(A_rec))
+        self.assertIn(A_rec.format, ['csr', 'csc', 'coo'])
+        self.assertEqual(A_rec.dtype, np.float64)
+        
+        # Verify accuracy by converting to dense
+        self.assertTrue(np.allclose(A, A_rec.toarray(), rtol=0, atol=1e-10))
+    
+    def test_star_dense_output(self):
+        """Test that STAR returns dense array when reconstruct_sparsely=False."""
+        n = 60
+        avg_deg = 10
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=55)
+        
+        S, colors, _ = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "STAR")
+        S = np.asarray(S, dtype=float)
+        colors = np.asarray(colors, dtype=int)
+        
+        B = A @ S
+        
+        A_rec = recover_matrix(
+            recover_from="STAR",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            reconstruct_sparsely=False,
+            dtype=np.float64
+        )
+        
+        # Verify output is dense
+        self.assertIsInstance(A_rec, np.ndarray)
+        self.assertFalse(sp.issparse(A_rec))
+    
+    def test_star_sparse_output(self):
+        """Test that STAR returns sparse matrix when reconstruct_sparsely=True."""
+        n = 60
+        avg_deg = 10
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=55)
+        
+        S, colors, _ = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "STAR")
+        S = np.asarray(S, dtype=float)
+        colors = np.asarray(colors, dtype=int)
+        
+        B = A @ S
+        
+        A_rec = recover_matrix(
+            recover_from="STAR",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            reconstruct_sparsely=True,
+            dtype=np.float64
+        )
+        
+        # Verify output is sparse
+        self.assertTrue(sp.issparse(A_rec))
+        self.assertIn(A_rec.format, ['csr', 'csc', 'coo'])
+        
+        # Verify accuracy
+        self.assertTrue(np.allclose(A, A_rec.toarray(), rtol=0, atol=1e-10))
+    
+    def test_acyclic_dense_output(self):
+        """Test that ACYCLIC returns dense array when reconstruct_sparsely=False."""
+        n = 70
+        avg_deg = 12
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=42)
+        
+        S, colors, comps = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "ACYCLIC_FOR_INDIRECT_RECOVERY")
+        S = np.asarray(S, dtype=float)
+        colors = np.asarray(colors, dtype=int)
+        
+        B = A @ S
+        
+        A_rec = recover_matrix(
+            recover_from="ACYCLIC",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            acyclic_components=comps,
+            reconstruct_sparsely=False,
+            dtype=np.float64
+        )
+        
+        # Verify output is dense
+        self.assertIsInstance(A_rec, np.ndarray)
+        self.assertFalse(sp.issparse(A_rec))
+    
+    def test_acyclic_sparse_output(self):
+        """Test that ACYCLIC returns sparse matrix when reconstruct_sparsely=True."""
+        n = 70
+        avg_deg = 12
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=42)
+        
+        S, colors, comps = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "ACYCLIC_FOR_INDIRECT_RECOVERY")
+        S = np.asarray(S, dtype=float)
+        colors = np.asarray(colors, dtype=int)
+        
+        B = A @ S
+        
+        A_rec = recover_matrix(
+            recover_from="ACYCLIC",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            acyclic_components=comps,
+            reconstruct_sparsely=True,
+            dtype=np.float64
+        )
+        
+        # Verify output is sparse
+        self.assertTrue(sp.issparse(A_rec))
+        self.assertIn(A_rec.format, ['csr', 'csc', 'coo'])
+        
+        # Verify accuracy
+        self.assertTrue(np.allclose(A, A_rec.toarray(), rtol=0, atol=1e-10))
+    
+    def test_sparse_output_with_verification(self):
+        """Test that sparse output works correctly with verification enabled."""
+        n = 60
+        avg_deg = 8
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=123)
+        
+        algorithms = [
+            ("DISTANCE_TWO", "DISTANCE_TWO", None),
+            ("STAR", "STAR", None),
+            ("ACYCLIC_FOR_INDIRECT_RECOVERY", "ACYCLIC", "comps")
+        ]
+        
+        for coloring_alg, recovery_alg, comps_key in algorithms:
+            with self.subTest(algorithm=recovery_alg):
+                S, colors, comps = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", coloring_alg)
+                S = np.asarray(S, dtype=float)
+                colors = np.asarray(colors, dtype=int)
+                
+                B = A @ S
+                
+                # Test with sparse reconstruction and verification
+                A_rec = recover_matrix(
+                    recover_from=recovery_alg,
+                    edges=edges,
+                    n=n,
+                    Y=B,
+                    vertex_colors=colors,
+                    acyclic_components=comps if comps_key else None,
+                    reconstruct_sparsely=True,
+                    dtype=np.float64,
+                    verify=True
+                )
+                
+                # Verify output is sparse
+                self.assertTrue(sp.issparse(A_rec), 
+                               f"{recovery_alg} should return sparse matrix")
+                
+                # Verify accuracy
+                self.assertTrue(np.allclose(A, A_rec.toarray(), rtol=0, atol=1e-10),
+                               f"{recovery_alg} failed accuracy test")
+    
+    def test_sparse_format_is_csr(self):
+        """Test that sparse output format is CSR (compressed sparse row)."""
+        n = 50
+        avg_deg = 8
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=42)
+        
+        S, colors, _ = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "DISTANCE_TWO")
+        S = np.asarray(S, dtype=float)
+        colors = np.asarray(colors, dtype=int)
+        
+        B = A @ S
+        
+        A_rec = recover_matrix(
+            recover_from="DISTANCE_TWO",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            reconstruct_sparsely=True,
+            dtype=np.float64
+        )
+        
+        # Verify format is CSR (efficient for most operations)
+        self.assertEqual(A_rec.format, 'csr')
+    
+    def test_dtype_preservation_sparse(self):
+        """Test that dtype is preserved in sparse output."""
+        n = 40
+        avg_deg = 6
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=777)
+        
+        S, colors, _ = get_seeds_from_pattern(edges, n, "NATURAL", "DISTANCE_TWO")
+        S = np.asarray(S, dtype=float)
+        colors = np.asarray(colors, dtype=int)
+        
+        B = A @ S
+        
+        for dtype in [np.float32, np.float64]:
+            with self.subTest(dtype=dtype):
+                A_rec = recover_matrix(
+                    recover_from="DISTANCE_TWO",
+                    edges=edges,
+                    n=n,
+                    Y=B,
+                    vertex_colors=colors,
+                    reconstruct_sparsely=True,
+                    dtype=dtype
+                )
+                
+                self.assertTrue(sp.issparse(A_rec))
+                self.assertEqual(A_rec.dtype, dtype)
+    
+    def test_sparse_output_sparsity_level(self):
+        """Test that sparse output has expected number of non-zeros."""
+        n = 50
+        avg_deg = 8
+        A, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=avg_deg, seed=42)
+        
+        S, colors, _ = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "DISTANCE_TWO")
+        S = np.asarray(S, dtype=float)
+        colors = np.asarray(colors, dtype=int)
+        
+        B = A @ S
+        
+        A_rec = recover_matrix(
+            recover_from="DISTANCE_TWO",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            reconstruct_sparsely=True,
+            dtype=np.float64
+        )
+        
+        # Count expected non-zeros: diagonal + 2*edges
+        expected_nnz = n + 2 * len(edges)
+        
+        self.assertEqual(A_rec.nnz, expected_nnz,
+                        f"Expected {expected_nnz} non-zeros, got {A_rec.nnz}")
 
 
 class TestLargeScaleMatrices(unittest.TestCase):
@@ -1283,14 +1591,16 @@ class TestLargeScaleMatrices(unittest.TestCase):
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             verify=True
         )
         
         # Relaxed tolerance for large sparse matrices
-        self.assertTrue(np.allclose(A, A_rec, rtol=1e-6, atol=1e-6))
+        # Convert sparse to dense for comparison
+        A_rec_dense = A_rec.toarray() if sp.issparse(A_rec) else A_rec
+        self.assertTrue(np.allclose(A, A_rec_dense, rtol=1e-6, atol=1e-6))
     
     def test_large_grid_laplacian(self):
         """Test recovery on large grid Laplacian (realistic PDE discretization)."""
@@ -1308,14 +1618,203 @@ class TestLargeScaleMatrices(unittest.TestCase):
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            B=B,
+            Y=B,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=True,
             verify=True
         )
         
-        self.assertTrue(np.allclose(A, A_rec, rtol=0, atol=1e-10))
+        # Convert sparse to dense for comparison
+        A_rec_dense = A_rec.toarray() if sp.issparse(A_rec) else A_rec
+        self.assertTrue(np.allclose(A, A_rec_dense, rtol=0, atol=1e-10))
+
+
+@unittest.skipUnless(HAS_TORCH, "PyTorch not available")
+class TestPyTorchGradients(unittest.TestCase):
+    """Test automatic differentiation through matrix recovery with PyTorch."""
+    
+    def test_gradient_through_distance_two_recovery(self):
+        """Test that gradients flow correctly through DISTANCE_TWO recovery."""
+        # Setup
+        n = 8
+        A_np, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=12, seed=42)
+        S, colors, comps = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "DISTANCE_TWO")
+        S_np = np.asarray(S)
+        
+        # Convert to PyTorch
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        A_torch = torch.tensor(A_np, dtype=torch.float64, device=device)
+        S_torch = torch.tensor(S_np, dtype=torch.float64, device=device)
+        
+        # Create trainable parameter (squared for more interesting gradient)
+        scale_param = torch.tensor([2.0], dtype=torch.float64, device=device, requires_grad=True)
+        A_scaled = (scale_param ** 2) * A_torch
+        
+        # Compressed evaluation and recovery
+        B = A_scaled @ S_torch
+        A_rec = recover_matrix(
+            recover_from="DISTANCE_TWO",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            reconstruct_sparsely=False,
+            verify=True
+        )
+        
+        # Compute loss and backprop
+        loss = A_rec.sum()
+        loss.backward()
+        
+        # Verify gradient
+        # d(loss)/d(scale) = d/d(scale)[sum(scale^2 * A)] = 2 * scale * sum(A)
+        expected_gradient = 2 * scale_param.item() * A_torch.sum().item()
+        self.assertIsNotNone(scale_param.grad)
+        self.assertAlmostEqual(scale_param.grad.item(), expected_gradient, places=10)
+        
+        # Verify recovered matrix
+        A_rec_expected = A_scaled.detach()
+        max_diff = torch.abs(A_rec - A_rec_expected).max().item()
+        self.assertLess(max_diff, 1e-10)
+    
+    def test_gradient_through_star_recovery(self):
+        """Test that gradients flow correctly through STAR recovery."""
+        # Setup
+        n = 8
+        A_np, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=12, seed=43)
+        S, colors, comps = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "STAR")
+        S_np = np.asarray(S)
+        
+        # Convert to PyTorch
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        A_torch = torch.tensor(A_np, dtype=torch.float64, device=device)
+        S_torch = torch.tensor(S_np, dtype=torch.float64, device=device)
+        
+        # Create trainable parameter
+        scale_param = torch.tensor([3.0], dtype=torch.float64, device=device, requires_grad=True)
+        A_scaled = (scale_param ** 2) * A_torch
+        
+        # Compressed evaluation and recovery
+        B = A_scaled @ S_torch
+        A_rec = recover_matrix(
+            recover_from="STAR",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            reconstruct_sparsely=False,
+            verify=True
+        )
+        
+        # Compute loss and backprop
+        loss = A_rec.sum()
+        loss.backward()
+        
+        # Verify gradient
+        expected_gradient = 2 * scale_param.item() * A_torch.sum().item()
+        self.assertIsNotNone(scale_param.grad)
+        self.assertAlmostEqual(scale_param.grad.item(), expected_gradient, places=10)
+    
+    def test_gradient_through_acyclic_recovery(self):
+        """Test that gradients flow correctly through ACYCLIC recovery."""
+        # Setup
+        n = 8
+        A_np, edges = MatrixTestHelper.make_random_spd_matrix(n=n, avg_deg=12, seed=44)
+        S, colors, comps = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "ACYCLIC")
+        S_np = np.asarray(S)
+        
+        # Convert to PyTorch
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        A_torch = torch.tensor(A_np, dtype=torch.float64, device=device)
+        S_torch = torch.tensor(S_np, dtype=torch.float64, device=device)
+        
+        # Create trainable parameter
+        scale_param = torch.tensor([1.5], dtype=torch.float64, device=device, requires_grad=True)
+        A_scaled = (scale_param ** 2) * A_torch
+        
+        # Compressed evaluation and recovery
+        B = A_scaled @ S_torch
+        A_rec = recover_matrix(
+            recover_from="ACYCLIC",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            acyclic_components=comps,
+            reconstruct_sparsely=False,
+            verify=True
+        )
+        
+        # Compute loss and backprop
+        loss = A_rec.sum()
+        loss.backward()
+        
+        # Verify gradient
+        expected_gradient = 2 * scale_param.item() * A_torch.sum().item()
+        self.assertIsNotNone(scale_param.grad)
+        self.assertAlmostEqual(scale_param.grad.item(), expected_gradient, places=10)
+    
+    def test_gradient_with_complex_function(self):
+        """Test gradients with a more complex loss function."""
+        # Setup
+        n = 10
+        A_np, edges = MatrixTestHelper.make_tridiagonal_matrix(n=n)
+        S, colors, comps = get_seeds_from_pattern(edges, n, "SMALLEST_LAST", "ACYCLIC")
+        S_np = np.asarray(S)
+        
+        # Convert to PyTorch
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        A_torch = torch.tensor(A_np, dtype=torch.float64, device=device)
+        S_torch = torch.tensor(S_np, dtype=torch.float64, device=device)
+        
+        # Create trainable parameter
+        scale_param = torch.tensor([2.0], dtype=torch.float64, device=device, requires_grad=True)
+        A_scaled = torch.exp(scale_param) * A_torch  # Use exponential for variety
+        
+        # Compressed evaluation and recovery
+        B = A_scaled @ S_torch
+        A_rec = recover_matrix(
+            recover_from="ACYCLIC",
+            edges=edges,
+            n=n,
+            Y=B,
+            vertex_colors=colors,
+            acyclic_components=comps,
+            reconstruct_sparsely=False,
+            verify=True
+        )
+        
+        # Complex loss: L2 norm of the matrix
+        loss = (A_rec ** 2).sum()
+        loss.backward()
+        
+        # Verify gradient exists and is finite
+        self.assertIsNotNone(scale_param.grad)
+        self.assertTrue(torch.isfinite(scale_param.grad).all())
+        
+        # Numerical gradient check
+        eps = 1e-6
+        with torch.no_grad():
+            scale_param_plus = scale_param + eps
+            A_scaled_plus = torch.exp(scale_param_plus) * A_torch
+            B_plus = A_scaled_plus @ S_torch
+            A_rec_plus = recover_matrix(
+                recover_from="ACYCLIC",
+                edges=edges,
+                n=n,
+                Y=B_plus,
+                vertex_colors=colors,
+                acyclic_components=comps,
+                reconstruct_sparsely=False,
+                verify=False
+            )
+            loss_plus = (A_rec_plus ** 2).sum()
+            numerical_grad = (loss_plus - loss.detach()) / eps
+        
+        # Check that analytical and numerical gradients are close
+        rel_error = abs(scale_param.grad.item() - numerical_grad.item()) / (abs(numerical_grad.item()) + 1e-10)
+        self.assertLess(rel_error, 1e-5)
 
 
 def suite():
@@ -1334,7 +1833,12 @@ def suite():
     suite.addTests(loader.loadTestsFromTestCase(TestGeneralSymmetricMatrices))
     suite.addTests(loader.loadTestsFromTestCase(TestStructuredMatrices))
     suite.addTests(loader.loadTestsFromTestCase(TestNumericalChallenges))
+    suite.addTests(loader.loadTestsFromTestCase(TestOutputFormat))
     suite.addTests(loader.loadTestsFromTestCase(TestLargeScaleMatrices))
+    
+    # PyTorch gradient tests (if available)
+    if HAS_TORCH:
+        suite.addTests(loader.loadTestsFromTestCase(TestPyTorchGradients))
     
     return suite
 

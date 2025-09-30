@@ -55,11 +55,20 @@ class CMakeBuild(_build_ext):
             shutil.copy2(lib_source, colpackpy_dir)
         if os.path.exists(lib_source_versioned):
             shutil.copy2(lib_source_versioned, colpackpy_dir)
+        
+        # For editable installs, also copy to source directory
+        source_dir = os.path.dirname(__file__)
+        if source_dir != colpackpy_dir:
+            if os.path.exists(lib_source):
+                shutil.copy2(lib_source, source_dir)
+            if os.path.exists(lib_source_versioned):
+                shutil.copy2(lib_source_versioned, source_dir)
             
         # Now run the original build_ext command
         super().run()
         
         # After building, patch the rpath of the extension module
+        source_dir = os.path.dirname(__file__)
         for ext in self.extensions:
             ext_path = self.get_ext_fullpath(ext.name)
             if os.path.exists(ext_path):
@@ -72,6 +81,21 @@ class CMakeBuild(_build_ext):
                         subprocess.run(['chrpath', '-r', '$ORIGIN', ext_path], check=False)
                     except FileNotFoundError:
                         pass  # Neither tool available
+                
+                # For editable installs, copy extension module to source directory
+                if self.inplace:
+                    ext_filename = os.path.basename(ext_path)
+                    source_ext_path = os.path.join(source_dir, ext_filename)
+                    if ext_path != source_ext_path:
+                        shutil.copy2(ext_path, source_ext_path)
+                        # Also patch the rpath of the source copy
+                        try:
+                            subprocess.run(['patchelf', '--set-rpath', '$ORIGIN', source_ext_path], check=False)
+                        except FileNotFoundError:
+                            try:
+                                subprocess.run(['chrpath', '-r', '$ORIGIN', source_ext_path], check=False)
+                            except FileNotFoundError:
+                                pass
 
 setup(
     name="colpackpy",
