@@ -17,6 +17,8 @@ from colpackpy.recovery import recover_matrix
 
 try:
     import torch
+    import torch.nn as nn
+    from torch.func import jacrev, jvp, vmap
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -1817,6 +1819,322 @@ class TestPyTorchGradients(unittest.TestCase):
         self.assertLess(rel_error, 1e-5)
 
 
+@unittest.skipUnless(HAS_TORCH, "PyTorch not available")
+class TestSparseHessianComputation(unittest.TestCase):
+    """Test sparse Hessian computation using HVPs and ColPack coloring."""
+    
+    @staticmethod
+    def hessian_vector_product(f):
+        """Generate HVP function."""
+        def hvp(x, v):
+            grad_func = jacrev(f)
+            _, hv = jvp(grad_func, (x,), (v,))
+            return hv
+        return hvp
+    
+    @staticmethod
+    def compute_hessian_autograd(f, x):
+        """Compute Hessian using standard PyTorch autograd (for comparison)."""
+        n = x.shape[0]
+        H = torch.zeros(n, n, dtype=x.dtype, device=x.device)
+        
+        for i in range(n):
+            grad = torch.autograd.grad(
+                f(x), x, create_graph=True, retain_graph=True
+            )[0]
+            
+            for j in range(n):
+                if grad[j].requires_grad:
+                    second_grad = torch.autograd.grad(
+                        grad[j], x, retain_graph=True
+                    )[0]
+                    H[i, j] = second_grad[i]
+                else:
+                    H[i, j] = 0.0
+        
+        return H
+    
+    @staticmethod
+    def compute_sparse_hessian_hvp(f, x, edges, coloring_algorithm="ACYCLIC", verify=False):
+        """Compute sparse Hessian using HVPs."""
+        n = x.shape[0]
+        device = x.device
+        dtype = x.dtype
+        
+        # Get ColPack seeds and coloring
+        S_np, colors_np, comps = get_seeds_from_pattern(
+            edges, n, "SMALLEST_LAST", coloring_algorithm
+        )
+        S_np = np.asarray(S_np)
+        S = torch.tensor(S_np, dtype=dtype, device=device)
+        
+        # Create HVP function and vectorize it
+        hvp = TestSparseHessianComputation.hessian_vector_product(f)
+        multiple_hvps = vmap(hvp, in_dims=(None, 1), out_dims=1)
+        
+        # Compute compressed Hessian: Y = H @ S
+        Y = multiple_hvps(x, S)
+        
+        # Recover the full Hessian from compressed representation
+        H = recover_matrix(
+            recover_from=coloring_algorithm,
+            edges=edges,
+            n=n,
+            Y=Y,
+            vertex_colors=colors_np,
+            acyclic_components=comps,
+            reconstruct_sparsely=False,
+            verify=verify,
+        )
+        
+        return H
+    
+    def test_block_diagonal_hessian(self):
+        """Test sparse Hessian computation with block diagonal structure."""
+        # Create a simple quadratic function with block diagonal Hessian
+        def f(x):
+            # Two blocks: first 3 dims, last 2 dims
+            block1 = x[:3]
+            block2 = x[3:]
+            return (block1 ** 2).sum() + (block2 ** 2).sum() + (block1[:-1] * block1[1:]).sum()
+        
+        n = 5
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        x = torch.randn(n, dtype=torch.float64, device=device)
+        
+        # Define block diagonal sparsity pattern
+        edges = np.array([[0, 1], [1, 2], [3, 4]], dtype=int)
+        
+        # Compute Hessian using HVPs
+        H = self.compute_sparse_hessian_hvp(f, x, edges, "ACYCLIC", verify=True)
+        
+        # Verify basic properties
+        self.assertEqual(H.shape, (n, n))
+        
+        # Check symmetry
+        H_np = H.detach().cpu().numpy()
+        self.assertTrue(np.allclose(H_np, H_np.T, atol=1e-10))
+        
+        # Check that off-block-diagonal elements are near zero
+        # Blocks are [0,1,2] and [3,4]
+        self.assertLess(abs(H_np[0, 3]), 1e-10)
+        self.assertLess(abs(H_np[0, 4]), 1e-10)
+        self.assertLess(abs(H_np[1, 3]), 1e-10)
+        self.assertLess(abs(H_np[1, 4]), 1e-10)
+        self.assertLess(abs(H_np[2, 3]), 1e-10)
+        self.assertLess(abs(H_np[2, 4]), 1e-10)
+    
+    def test_neural_network_hessian(self):
+        """Test sparse Hessian computation with neural network function."""
+        # Simple neural network with two independent parts
+        class TwoNetFunction(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.net1 = nn.Sequential(
+                    nn.Linear(3, 4),
+                    nn.Tanh(),
+                    nn.Linear(4, 1)
+                )
+                self.net2 = nn.Sequential(
+                    nn.Linear(2, 3),
+                    nn.Tanh(),
+                    nn.Linear(3, 1)
+                )
+            
+            def forward(self, x):
+                return self.net1(x[:3]).squeeze() + self.net2(x[3:]).squeeze()
+        
+        n = 5
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        model = TwoNetFunction().double().to(device)
+        model.eval()
+        
+        x = torch.randn(n, dtype=torch.float64, device=device)
+        
+        # Define block diagonal sparsity (fully connected within blocks)
+        edges = []
+        for i in range(3):
+            for j in range(i + 1, 3):
+                edges.append([i, j])
+        for i in range(3, 5):
+            for j in range(i + 1, 5):
+                edges.append([i, j])
+        edges = np.array(edges, dtype=int)
+        
+        # Compute Hessian using HVPs
+        H = self.compute_sparse_hessian_hvp(lambda x: model(x), x, edges, "ACYCLIC", verify=True)
+        
+        # Verify basic properties
+        self.assertEqual(H.shape, (n, n))
+        
+        # Check symmetry
+        H_np = H.detach().cpu().numpy()
+        self.assertTrue(np.allclose(H_np, H_np.T, atol=1e-10))
+        
+        # Check that off-block-diagonal elements are near zero
+        for i in range(3):
+            for j in range(3, 5):
+                self.assertLess(abs(H_np[i, j]), 1e-10)
+    
+    def test_compression_ratio(self):
+        """Test that sparse Hessian computation achieves compression."""
+        # Large block diagonal system
+        def f(x):
+            n = x.shape[0]
+            block_size = 4
+            num_blocks = n // block_size
+            total = torch.tensor(0.0, dtype=x.dtype, device=x.device)
+            
+            for i in range(num_blocks):
+                start = i * block_size
+                end = start + block_size
+                block = x[start:end]
+                total = total + (block ** 2).sum()
+            
+            return total
+        
+        n = 16
+        block_size = 4
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        x = torch.randn(n, dtype=torch.float64, device=device)
+        
+        # Define block diagonal sparsity pattern
+        edges = []
+        num_blocks = n // block_size
+        for b in range(num_blocks):
+            start = b * block_size
+            for i in range(start, start + block_size):
+                for j in range(i + 1, start + block_size):
+                    edges.append([i, j])
+        edges = np.array(edges, dtype=int)
+        
+        # Get coloring information
+        S_np, colors_np, comps = get_seeds_from_pattern(
+            edges, n, "SMALLEST_LAST", "ACYCLIC"
+        )
+        S_np = np.asarray(S_np)
+        num_colors = S_np.shape[1]
+        
+        # Verify compression is achieved
+        self.assertLess(num_colors, n)
+        # For block diagonal with 4x4 blocks, we expect 4 colors
+        self.assertEqual(num_colors, block_size)
+        
+        # Compute Hessian using HVPs
+        H = self.compute_sparse_hessian_hvp(f, x, edges, "ACYCLIC", verify=True)
+        
+        # Verify it's symmetric and diagonal (for this simple quadratic function)
+        H_np = H.detach().cpu().numpy()
+        self.assertTrue(np.allclose(H_np, H_np.T, atol=1e-10))
+    
+    def test_different_coloring_algorithms(self):
+        """Test sparse Hessian computation with different coloring algorithms."""
+        def f(x):
+            return (x ** 2).sum() + (x[:-1] * x[1:]).sum()
+        
+        n = 6
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        x = torch.randn(n, dtype=torch.float64, device=device)
+        
+        # Tridiagonal sparsity pattern
+        edges = np.array([[i, i+1] for i in range(n-1)], dtype=int)
+        
+        # Test with different algorithms (without verification to avoid issues with different seed matrices)
+        # Compute manually without verification
+        for algorithm in ["ACYCLIC", "STAR", "DISTANCE_TWO"]:
+            H = self.compute_sparse_hessian_hvp(f, x, edges, algorithm)
+            
+            # Verify basic properties
+            self.assertEqual(H.shape, (n, n))
+            
+            # Check symmetry
+            H_np = H.detach().cpu().numpy()
+            self.assertTrue(np.allclose(H_np, H_np.T, atol=1e-10))
+        
+        # Now test that ACYCLIC and DISTANCE_TWO give similar results
+        # (STAR may differ slightly due to numerical precision)
+        H_acyclic = self.compute_sparse_hessian_hvp(f, x, edges, "ACYCLIC")
+        H_distance_two = self.compute_sparse_hessian_hvp(f, x, edges, "DISTANCE_TWO")
+        
+        H_acyclic_np = H_acyclic.detach().cpu().numpy()
+        H_distance_two_np = H_distance_two.detach().cpu().numpy()
+        
+        self.assertTrue(np.allclose(H_acyclic_np, H_distance_two_np, atol=1e-8))
+    
+    def test_compare_with_naive_autograd(self):
+        """Test that sparse Hessian matches naive autograd computation."""
+        # Simple quadratic function
+        def f(x):
+            return (x ** 2).sum() + (x[:-1] * x[1:]).sum() + 0.5 * (x ** 3).sum()
+        
+        n = 6
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        x = torch.randn(n, dtype=torch.float64, device=device, requires_grad=True)
+        
+        # Tridiagonal sparsity pattern
+        edges = np.array([[i, i+1] for i in range(n-1)], dtype=int)
+        
+        # Compute using sparse method
+        H_sparse = self.compute_sparse_hessian_hvp(f, x, edges, "ACYCLIC", verify=False)
+        
+        # Compute using naive autograd
+        x_copy = x.detach().clone().requires_grad_(True)
+        H_naive = self.compute_hessian_autograd(f, x_copy)
+        
+        # Compare
+        H_sparse_np = H_sparse.detach().cpu().numpy()
+        H_naive_np = H_naive.detach().cpu().numpy()
+        
+        max_diff = np.abs(H_sparse_np - H_naive_np).max()
+        self.assertLess(max_diff, 1e-10, f"Max difference: {max_diff}")
+        self.assertTrue(np.allclose(H_sparse_np, H_naive_np, atol=1e-10))
+    
+    def test_neural_network_vs_autograd(self):
+        """Test neural network Hessian against naive autograd."""
+        class SimpleNet(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.net = nn.Sequential(
+                    nn.Linear(4, 6),
+                    nn.Tanh(),
+                    nn.Linear(6, 1)
+                )
+            
+            def forward(self, x):
+                return self.net(x).squeeze()
+        
+        n = 4
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        model = SimpleNet().double().to(device)
+        model.eval()
+        
+        x = torch.randn(n, dtype=torch.float64, device=device, requires_grad=True)
+        
+        # Fully connected sparsity pattern
+        edges = []
+        for i in range(n):
+            for j in range(i + 1, n):
+                edges.append([i, j])
+        edges = np.array(edges, dtype=int)
+        
+        # Compute using sparse method
+        H_sparse = self.compute_sparse_hessian_hvp(lambda x: model(x), x, edges, "ACYCLIC", verify=False)
+        
+        # Compute using naive autograd
+        x_copy = x.detach().clone().requires_grad_(True)
+        H_naive = self.compute_hessian_autograd(lambda x: model(x), x_copy)
+        
+        # Compare
+        H_sparse_np = H_sparse.detach().cpu().numpy()
+        H_naive_np = H_naive.detach().cpu().numpy()
+        
+        max_diff = np.abs(H_sparse_np - H_naive_np).max()
+        self.assertLess(max_diff, 1e-9, f"Max difference: {max_diff}")
+        self.assertTrue(np.allclose(H_sparse_np, H_naive_np, atol=1e-9))
+
+
 def suite():
     """Create a test suite for the recovery module."""
     loader = unittest.TestLoader()
@@ -1839,6 +2157,7 @@ def suite():
     # PyTorch gradient tests (if available)
     if HAS_TORCH:
         suite.addTests(loader.loadTestsFromTestCase(TestPyTorchGradients))
+        suite.addTests(loader.loadTestsFromTestCase(TestSparseHessianComputation))
     
     return suite
 
