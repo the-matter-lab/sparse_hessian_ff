@@ -72,18 +72,18 @@ print(f"\nInitial scaling parameter: {scale_param.item():.4f}")
 # Square the parameter to make gradient more interesting
 A_scaled = (scale_param ** 2) * A_torch
 
-# ---- Compressed evaluation: B = (scale^2 * A) @ S ----
-B = A_scaled @ S_torch
+# ---- Compressed evaluation: Y = (scale^2 * A) @ S ----
+Y = A_scaled @ S_torch
 
-print(f"Compressed matrix B shape: {B.shape}")
-print(f"B requires_grad: {B.requires_grad}")
+print(f"Compressed matrix Y shape: {Y.shape}")
+print(f"Y requires_grad: {Y.requires_grad}")
 
 # ---- Reconstruct via indirect (acyclic) recovery ----
 A_rec = recover_matrix(
     recover_from=ALGORITHM,
     edges=edges,
     n=n,
-    Y=B,
+    Y=Y,
     vertex_colors=colors,
     acyclic_components=comps,
     reconstruct_sparsely=False,  # PyTorch backend always returns dense

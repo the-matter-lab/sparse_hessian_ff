@@ -58,7 +58,7 @@ S, colors, comps = get_seeds_from_pattern(sparsity_pattern, n, ORDERING, ALGORIT
 print("Seed matrix shape:", np.asarray(S).shape)
 
 # ---- Compressed evaluation Y = A @ S ----
-B = A @ S
+Y = A @ S
 
 
 # ---- Reconstruct via indirect (acyclic) recovery using cached components ----
@@ -66,7 +66,7 @@ A_rec = recover_matrix(
     recover_from=ALGORITHM,  # accepted alias
     edges=edges,
     n=n,
-    Y=B,
+    Y=Y,
     vertex_colors=colors,
     acyclic_components=comps,   # use ColPack's cached two-colored forests
     reconstruct_sparsely=True,

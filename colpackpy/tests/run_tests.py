@@ -453,14 +453,14 @@ class TestDistanceTwoRecovery(unittest.TestCase):
         colors = np.asarray(colors, dtype=int)
         
         # Compressed evaluation
-        B = A @ S
+        Y = A @ S
         
         # Recovery
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64,
@@ -481,13 +481,13 @@ class TestDistanceTwoRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64
@@ -505,14 +505,14 @@ class TestDistanceTwoRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         # Test with sparse reconstruction
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             dtype=np.float64,
@@ -532,13 +532,13 @@ class TestDistanceTwoRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64
@@ -562,14 +562,14 @@ class TestStarRecovery(unittest.TestCase):
         colors = np.asarray(colors, dtype=int)
         
         # Compressed evaluation
-        B = A @ S
+        Y = A @ S
         
         # Recovery
         A_rec = recover_matrix(
             recover_from="STAR",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64,
@@ -590,13 +590,13 @@ class TestStarRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="STAR",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64
@@ -614,14 +614,14 @@ class TestStarRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         # Test with sparse reconstruction
         A_rec = recover_matrix(
             recover_from="STAR",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             dtype=np.float64,
@@ -646,13 +646,13 @@ class TestStarRecovery(unittest.TestCase):
                 S = np.asarray(S, dtype=float)
                 colors = np.asarray(colors, dtype=int)
                 
-                B = A @ S
+                Y = A @ S
                 
                 A_rec = recover_matrix(
                     recover_from="STAR",
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors,
                     reconstruct_sparsely=False,
                     dtype=np.float64,
@@ -677,14 +677,14 @@ class TestAcyclicRecovery(unittest.TestCase):
         colors = np.asarray(colors, dtype=int)
         
         # Compressed evaluation
-        B = A @ S
+        Y = A @ S
         
         # Recovery with cached components
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=True,
@@ -708,13 +708,13 @@ class TestAcyclicRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=False,
@@ -733,14 +733,14 @@ class TestAcyclicRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         # Test without passing acyclic_components (fallback path)
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=None,
             reconstruct_sparsely=False,
@@ -760,14 +760,14 @@ class TestAcyclicRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         # Test with sparse reconstruction
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=True,
@@ -789,14 +789,14 @@ class TestAcyclicRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         # Test with ACYCLIC_INDIRECT alias
         A_rec = recover_matrix(
             recover_from="ACYCLIC_INDIRECT",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=False,
@@ -815,13 +815,13 @@ class TestAcyclicRecovery(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=False,
@@ -843,14 +843,14 @@ class TestRecoveryEdgeCases(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         with self.assertRaises(ValueError):
             recover_matrix(
                 recover_from="INVALID_ALGORITHM",
                 edges=edges,
                 n=n,
-                Y=B,
+                Y=Y,
                 vertex_colors=colors
             )
     
@@ -864,7 +864,7 @@ class TestRecoveryEdgeCases(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         for algorithm in ["DISTANCE_TWO", "STAR"]:
             with self.subTest(algorithm=algorithm):
@@ -872,7 +872,7 @@ class TestRecoveryEdgeCases(unittest.TestCase):
                     recover_from=algorithm,
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors
                 )
                 
@@ -887,7 +887,7 @@ class TestRecoveryEdgeCases(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         for dtype in [np.float32, np.float64]:
             with self.subTest(dtype=dtype):
@@ -895,7 +895,7 @@ class TestRecoveryEdgeCases(unittest.TestCase):
                     recover_from="DISTANCE_TWO",
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors,
                     dtype=dtype
                 )
@@ -925,13 +925,13 @@ class TestRecoveryComparison(unittest.TestCase):
             S = np.asarray(S, dtype=float)
             colors = np.asarray(colors, dtype=int)
             
-            B = A @ S
+            Y = A @ S
             
             A_rec = recover_matrix(
                 recover_from=recovery_alg,
                 edges=edges,
                 n=n,
-                Y=B,
+                Y=Y,
                 vertex_colors=colors,
                 acyclic_components=comps if recovery_alg == "ACYCLIC" else None,
                 reconstruct_sparsely=False,
@@ -962,13 +962,13 @@ class TestGeneralSymmetricMatrices(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             verify=True
         )
@@ -987,13 +987,13 @@ class TestGeneralSymmetricMatrices(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="STAR",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             verify=True
         )
@@ -1012,13 +1012,13 @@ class TestGeneralSymmetricMatrices(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             verify=True
@@ -1049,13 +1049,13 @@ class TestStructuredMatrices(unittest.TestCase):
                 S = np.asarray(S, dtype=float)
                 colors = np.asarray(colors, dtype=int)
                 
-                B = A @ S
+                Y = A @ S
                 
                 A_rec = recover_matrix(
                     recover_from=recovery_alg,
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors,
                     acyclic_components=comps if recovery_alg == "ACYCLIC" else None,
                     verify=True
@@ -1081,13 +1081,13 @@ class TestStructuredMatrices(unittest.TestCase):
                 S = np.asarray(S, dtype=float)
                 colors = np.asarray(colors, dtype=int)
                 
-                B = A @ S
+                Y = A @ S
                 
                 A_rec = recover_matrix(
                     recover_from=recovery_alg,
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors,
                     acyclic_components=comps if recovery_alg == "ACYCLIC" else None,
                     verify=True
@@ -1108,13 +1108,13 @@ class TestStructuredMatrices(unittest.TestCase):
                 S = np.asarray(S, dtype=float)
                 colors = np.asarray(colors, dtype=int)
                 
-                B = A @ S
+                Y = A @ S
                 
                 A_rec = recover_matrix(
                     recover_from="DISTANCE_TWO",
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors,
                     verify=True
                 )
@@ -1133,13 +1133,13 @@ class TestStructuredMatrices(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="STAR",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             verify=True
         )
@@ -1161,13 +1161,13 @@ class TestStructuredMatrices(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             verify=True
@@ -1202,14 +1202,14 @@ class TestNumericalChallenges(unittest.TestCase):
                 S = np.asarray(S, dtype=float)
                 colors = np.asarray(colors, dtype=int)
                 
-                B = A @ S
+                Y = A @ S
                 
                 # Use relative tolerance for mixed magnitudes
                 A_rec = recover_matrix(
                     recover_from=recovery_alg,
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors,
                     acyclic_components=comps if recovery_alg == "ACYCLIC" else None,
                     dtype=np.float64,
@@ -1236,13 +1236,13 @@ class TestNumericalChallenges(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             verify=True
         )
@@ -1263,13 +1263,13 @@ class TestNumericalChallenges(unittest.TestCase):
                 S = np.asarray(S, dtype=float)
                 colors = np.asarray(colors, dtype=int)
                 
-                B = A @ S
+                Y = A @ S
                 
                 A_rec = recover_matrix(
                     recover_from="STAR",
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors,
                     verify=True
                 )
@@ -1291,13 +1291,13 @@ class TestOutputFormat(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64
@@ -1318,13 +1318,13 @@ class TestOutputFormat(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             dtype=np.float64
@@ -1348,13 +1348,13 @@ class TestOutputFormat(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="STAR",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             dtype=np.float64
@@ -1374,13 +1374,13 @@ class TestOutputFormat(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="STAR",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             dtype=np.float64
@@ -1403,13 +1403,13 @@ class TestOutputFormat(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=False,
@@ -1430,13 +1430,13 @@ class TestOutputFormat(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=True,
@@ -1468,14 +1468,14 @@ class TestOutputFormat(unittest.TestCase):
                 S = np.asarray(S, dtype=float)
                 colors = np.asarray(colors, dtype=int)
                 
-                B = A @ S
+                Y = A @ S
                 
                 # Test with sparse reconstruction and verification
                 A_rec = recover_matrix(
                     recover_from=recovery_alg,
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors,
                     acyclic_components=comps if comps_key else None,
                     reconstruct_sparsely=True,
@@ -1501,13 +1501,13 @@ class TestOutputFormat(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             dtype=np.float64
@@ -1526,7 +1526,7 @@ class TestOutputFormat(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         for dtype in [np.float32, np.float64]:
             with self.subTest(dtype=dtype):
@@ -1534,7 +1534,7 @@ class TestOutputFormat(unittest.TestCase):
                     recover_from="DISTANCE_TWO",
                     edges=edges,
                     n=n,
-                    Y=B,
+                    Y=Y,
                     vertex_colors=colors,
                     reconstruct_sparsely=True,
                     dtype=dtype
@@ -1553,13 +1553,13 @@ class TestOutputFormat(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             dtype=np.float64
@@ -1585,13 +1585,13 @@ class TestLargeScaleMatrices(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=True,
             verify=True
@@ -1612,13 +1612,13 @@ class TestLargeScaleMatrices(unittest.TestCase):
         S = np.asarray(S, dtype=float)
         colors = np.asarray(colors, dtype=int)
         
-        B = A @ S
+        Y = A @ S
         
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=True,
@@ -1652,12 +1652,12 @@ class TestPyTorchGradients(unittest.TestCase):
         A_scaled = (scale_param ** 2) * A_torch
         
         # Compressed evaluation and recovery
-        B = A_scaled @ S_torch
+        Y = A_scaled @ S_torch
         A_rec = recover_matrix(
             recover_from="DISTANCE_TWO",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             verify=True
@@ -1696,12 +1696,12 @@ class TestPyTorchGradients(unittest.TestCase):
         A_scaled = (scale_param ** 2) * A_torch
         
         # Compressed evaluation and recovery
-        B = A_scaled @ S_torch
+        Y = A_scaled @ S_torch
         A_rec = recover_matrix(
             recover_from="STAR",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             reconstruct_sparsely=False,
             verify=True
@@ -1734,12 +1734,12 @@ class TestPyTorchGradients(unittest.TestCase):
         A_scaled = (scale_param ** 2) * A_torch
         
         # Compressed evaluation and recovery
-        B = A_scaled @ S_torch
+        Y = A_scaled @ S_torch
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=False,
@@ -1773,12 +1773,12 @@ class TestPyTorchGradients(unittest.TestCase):
         A_scaled = torch.exp(scale_param) * A_torch  # Use exponential for variety
         
         # Compressed evaluation and recovery
-        B = A_scaled @ S_torch
+        Y = A_scaled @ S_torch
         A_rec = recover_matrix(
             recover_from="ACYCLIC",
             edges=edges,
             n=n,
-            Y=B,
+            Y=Y,
             vertex_colors=colors,
             acyclic_components=comps,
             reconstruct_sparsely=False,
@@ -1798,12 +1798,12 @@ class TestPyTorchGradients(unittest.TestCase):
         with torch.no_grad():
             scale_param_plus = scale_param + eps
             A_scaled_plus = torch.exp(scale_param_plus) * A_torch
-            B_plus = A_scaled_plus @ S_torch
+            Y_plus = A_scaled_plus @ S_torch
             A_rec_plus = recover_matrix(
                 recover_from="ACYCLIC",
                 edges=edges,
                 n=n,
-                Y=B_plus,
+                Y=Y_plus,
                 vertex_colors=colors,
                 acyclic_components=comps,
                 reconstruct_sparsely=False,
