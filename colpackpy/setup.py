@@ -11,7 +11,7 @@ colpack_root = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ColPack'
 # Update the extension module configuration
 ext = Pybind11Extension(
     "colpackpy.coloring",
-    ["coloring.cpp", "utilities.cpp"],
+    ["src/colpackpy/cpp/coloring.cpp", "src/colpackpy/cpp/utilities.cpp"],
     include_dirs=[
         os.path.join(colpack_root, 'inc'),
         os.path.join(colpack_root, 'src/Utilities'),
@@ -49,7 +49,7 @@ class CMakeBuild(_build_ext):
         build_lib = self.build_lib
         colpackpy_dir = os.path.join(build_lib, 'colpackpy')
         os.makedirs(colpackpy_dir, exist_ok=True)
-        
+
         # Copy shared libraries to the package directory
         if os.path.exists(lib_source):
             shutil.copy2(lib_source, colpackpy_dir)
@@ -57,7 +57,7 @@ class CMakeBuild(_build_ext):
             shutil.copy2(lib_source_versioned, colpackpy_dir)
         
         # For editable installs, also copy to source directory
-        source_dir = os.path.dirname(__file__)
+        source_dir = os.path.join(os.path.dirname(__file__), 'src', 'colpackpy')
         if source_dir != colpackpy_dir:
             if os.path.exists(lib_source):
                 shutil.copy2(lib_source, source_dir)
@@ -68,7 +68,7 @@ class CMakeBuild(_build_ext):
         super().run()
         
         # After building, patch the rpath of the extension module
-        source_dir = os.path.dirname(__file__)
+        source_dir = os.path.join(os.path.dirname(__file__), 'src', 'colpackpy')
         for ext in self.extensions:
             ext_path = self.get_ext_fullpath(ext.name)
             if os.path.exists(ext_path):
@@ -101,7 +101,7 @@ setup(
     name="colpackpy",
     version="0.0.1",
     packages=["colpackpy"],
-    package_dir={"colpackpy": "."},
+    package_dir={"colpackpy": "src/colpackpy"},
     ext_modules=[ext],
     cmdclass={"build_ext": CMakeBuild},
     package_data={

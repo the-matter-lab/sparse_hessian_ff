@@ -1,0 +1,64 @@
+# ColPackPy: Python Bindings for ColPack Graph Coloring Library
+
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![NumPy 1.26.4](https://img.shields.io/badge/NumPy-1.26.4-blue.svg)](https://numpy.org/)
+[![PyTorch 2.4.0](https://img.shields.io/badge/PyTorch-2.4.0-blue.svg)](https://pytorch.org/)
+
+Python bindings for the [ColPack](https://github.com/CSCsw/ColPack) graph coloring library, enabling efficient sparse matrix recovery for Hessian matrices and general symmetric matrices.
+
+The typical use case is for sparse automatic differentiation: Autodiff lets use probe a Hessian using Hessian vector products (HVP). Given we know the sparsity pattern of a Hessian (or Jacobian, although the current release does not support this), using the coloring algorithms in this library we can construct our HVPs in such a way, that we extract the maximal information. A corresponding recovery algorithm then reconstructs the Hessian (or Jacobian).
+
+The recovery algorithms support numpy and torch and can therefore be differentiated. Sparse tensors are supported for large scale matrices.
+
+## Overview
+
+ColPackPy provides Python interfaces to ColPack's state-of-the-art graph coloring algorithms:
+
+- **Graph Coloring**: Distance-2, star, and acyclic coloring algorithms
+- **Matrix Recovery**: Efficient compression and recovery of sparse Hessian matrices
+- **HPC Performance**: C++ backend with PyBind11 for optimal performance
+
+## Installation
+
+### From Source (Recommended)
+
+```bash
+# Clone or navigate to the repository
+cd colpackpy
+
+# Install in development mode
+pip install -e .
+```
+
+### Prerequisites
+
+- **Python 3.10+**
+- **CMake** (build system generator; ColPack is compiled from source during installation)
+- **C++ Compiler** (GCC 11.2.0 or compatible; we do not ship prebuild binaries)
+- **PyBind11** (automatically installed)
+
+### Optional Dependencies
+
+- **PyTorch** (for autodiff of recovery)
+
+## Tested Environment
+
+This package has been tested on:
+
+| Component | Version |
+|-----------|---------|
+| **Python** | 3.10.18 |
+| **NumPy** | 1.26.4 |
+| **PyTorch** | 2.4.0+cu121 |
+
+**System**: Linux x86_64, GCC 11.2.0
+
+## Usage
+
+See the `examples/` directory for usage examples:
+
+- **`toy_matrix_recovery_example.py`** - Basic matrix compression and recovery
+- **`gradient_example.py`** - Gradient computation with sparse Hessians
+- **`toy_nn_example.py`** - Neural network Hessian computation
+
+

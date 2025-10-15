@@ -1,16 +1,6 @@
 MANIFEST.in
-__init__.py
-coloring.cpp
-coloring.cpython-310-x86_64-linux-gnu.so
 pyproject.toml
-recovery.py
 setup.py
-utilities.cpp
-utilities.h
-./__init__.py
-./coloring.cpython-310-x86_64-linux-gnu.so
-./recovery.py
-./setup.py
 ColPack/.gitignore
 ColPack/.travis.yml
 ColPack/AUTHORS
@@ -413,3 +403,8 @@ colpackpy.egg-info/SOURCES.txt
 colpackpy.egg-info/dependency_links.txt
 colpackpy.egg-info/not-zip-safe
 colpackpy.egg-info/top_level.txt
+src/colpackpy/__init__.py
+src/colpackpy/recovery.py
+src/colpackpy/torch_utils.py
+src/colpackpy/cpp/coloring.cpp
+src/colpackpy/cpp/utilities.cpp
