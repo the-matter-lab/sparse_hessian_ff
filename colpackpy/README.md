@@ -12,15 +12,15 @@ The recovery algorithms support numpy and torch and can therefore be differentia
 
 ## Overview
 
-ColPackPy provides Python interfaces to ColPack's state-of-the-art graph coloring algorithms:
+ColPackPy provides Python interfaces to ColPack's graph coloring algorithms, as well as recovery algrotihms written in numpy and pytorh. Additionally, small wrapper to calculate Hessians of Pytorch models given the Hessians sparsity pattern as a sparse tensor:
 
 - **Graph Coloring**: Distance-2, star, and acyclic coloring algorithms
 - **Matrix Recovery**: Efficient compression and recovery of sparse Hessian matrices
-- **HPC Performance**: C++ backend with PyBind11 for optimal performance
+- **Convinience wrapper for PyTorch Hessian**: Given a PyTorch model and sparsity pattern, get the sparse Hessian
 
 ## Installation
 
-### From Source (Recommended)
+### From Source
 
 ```bash
 # Clone or navigate to the repository
