@@ -15,7 +15,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-from colpackpy.torch_utils import compute_sparse_hessian_with_stats
+from colpackpy.torch_utils import compute_sparse_hessian_fn
 
 
 class ThreeNetworkFunction(nn.Module):
@@ -162,10 +162,11 @@ def main():
     print("Computing Hessian with ColPackPy + HVPs...")
     print("-"*70)
     
-    H_sparse, stats = compute_sparse_hessian_with_stats(
-        f, x, edges,
+    H_sparse, stats = compute_sparse_hessian_fn(
+        f, x, edges, n,
         coloring_algorithm="ACYCLIC",
-        verify=True
+        verify=True,
+        return_stats=True,
     )
     
     print(f"\nColoring Statistics:")

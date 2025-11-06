@@ -27,7 +27,7 @@ pot = matgl.load_model("../pretrained_models/TensorNet-ANI-1x-Subset-PES")
 n_layers = len(pot.model.layers)
 pot.calc_hessian = True
 # atoms = read('/h/28/lucahiede/Projects/sparse_hessian_ff/data/AT-AT-CG-CG_random_point_double.xyz')
-atoms = read('/h/28/lucahiede/Projects/sparse_hessian_ff/data/water_cluster/5.xyz')
+atoms = read('/h/28/lucahiede/Projects/sparse_hessian_ff/data/Water Cluster/5.xyz')
 
 element_types = pot.model.element_types
 cutoff = pot.model.cutoff 
@@ -53,7 +53,7 @@ print("Seed matrix shape:", S.shape, "(n_colors =", S.shape[1], ")")
 
 # ---- Compressed evaluation Y = A @ S ----
 time2 = time.time()
-B = A @ S
+Y = A @ S
 time3 = time.time()
 
 # ---- Reconstruct via indirect (acyclic) recovery using cached components ----
@@ -61,11 +61,10 @@ A_rec = recover_matrix(
     recover_from=ALGORITHM,  # accepted alias
     edges=edges,
     n=n,
-    B=B,
+    Y=Y,
     vertex_colors=colors,
     acyclic_components=comps,   # use ColPack’s cached two-colored forests
     reconstruct_sparsely=False,
-    dtype=np.float64,
     verify=True
 )
 

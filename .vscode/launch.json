@@ -33,6 +33,14 @@
             "python": "/h/28/lucahiede/anaconda3/envs/sparse_hessian_ff/bin/python",
             "program": "${workspaceFolder}/matgl/examples/sparse_hessian_timing_demo.py",
             "console": "integratedTerminal",
+        },
+        {
+            "name": "Hessian Timing Demo Real",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "/h/28/lucahiede/anaconda3/envs/sparse_hessian_ff/bin/python",
+            "program": "${workspaceFolder}/matgl/examples/sparse_hessian_timing_demo_real.py",
+            "console": "integratedTerminal",
         }
     ]
 }

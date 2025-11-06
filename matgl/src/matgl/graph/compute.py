@@ -384,3 +384,58 @@ def _ensure_directed_line_graph_compatibility(
     line_graph.ndata["src_bond_sign"][ns_edge_ids] = -line_graph.ndata["src_bond_sign"][ns_edge_ids]
 
     return line_graph
+
+
+def create_sparsity_pattern_from_graph(g: "dgl.DGLGraph", num_layers: int) -> tuple["np.ndarray", int]:
+    """Create sparsity pattern from DGL graph structure for 3D coordinates.
+
+    For an L-layer neural network, atoms that are up to L hops away in the graph
+    can have non-zero Hessian entries.
+
+    Args:
+        g: DGL graph
+        num_layers: Number of layers in the model (determines sparsity pattern)
+
+    Returns:
+        edges: Edge list as (N, 2) array for 3D coordinate Hessian
+        n: Number of DOFs (atoms * 3)
+    """
+    import numpy as np
+    from scipy.sparse import coo_matrix
+
+    # Get graph edges and create adjacency matrix
+    sources, destinations = g.edges()
+    sources = sources.cpu().numpy()
+    destinations = destinations.cpu().numpy()
+    num_atoms = g.num_nodes()
+
+    # Create adjacency matrix (already symmetric from undirected graph)
+    adjacency = coo_matrix(
+        (np.ones(len(sources)), (sources, destinations)),
+        shape=(num_atoms, num_atoms)
+    )
+
+    # Add self-loops (diagonal)
+    adjacency.setdiag(1)
+
+    # Compute A^L to get L-hop connectivity
+    adjacency_power = adjacency.copy()
+    for _ in range(num_layers - 1):
+        adjacency_power = adjacency_power @ adjacency
+
+    # Convert to boolean (non-zero entries indicate connectivity)
+    sparsity_pattern = (adjacency_power != 0).tocoo()
+
+    # Get number of DOFs
+    n = num_atoms * 3  # 3 DOFs per atom
+
+    # Expand to 3D coordinates using sparse Kronecker product
+    # Each atom-atom interaction becomes 3x3 block
+    from scipy.sparse import kron
+    ones_3x3 = coo_matrix(np.ones((3, 3)))
+    expanded_sparsity = kron(sparsity_pattern, ones_3x3).tocoo()
+
+    # Create edge list from sparse matrix
+    edges = np.vstack((expanded_sparsity.row, expanded_sparsity.col)).T
+
+    return edges, n

@@ -1,4 +1,5 @@
 MANIFEST.in
+README.md
 pyproject.toml
 setup.py
 ColPack/.gitignore
@@ -404,6 +405,9 @@ colpackpy.egg-info/dependency_links.txt
 colpackpy.egg-info/not-zip-safe
 colpackpy.egg-info/top_level.txt
 src/colpackpy/__init__.py
+src/colpackpy/coloring.cpython-310-x86_64-linux-gnu.so
+src/colpackpy/libColPack.so
+src/colpackpy/libColPack.so.0
 src/colpackpy/recovery.py
 src/colpackpy/torch_utils.py
 src/colpackpy/cpp/coloring.cpp
