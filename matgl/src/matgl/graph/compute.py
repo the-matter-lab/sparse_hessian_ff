@@ -439,3 +439,55 @@ def create_sparsity_pattern_from_graph(g: "dgl.DGLGraph", num_layers: int) -> tu
     edges = np.vstack((expanded_sparsity.row, expanded_sparsity.col)).T
 
     return edges, n
+
+
+def create_sparsity_pattern_from_cutoff(g: "dgl.DGLGraph", cutoff: float) -> tuple["np.ndarray", int]:
+    """Create sparsity pattern from cutoff radius for 3D coordinates.
+
+    Atoms within the cutoff distance will have non-zero Hessian entries.
+    This creates a sparsity pattern based on geometric distance rather than
+    graph connectivity.
+
+    Args:
+        g: DGL graph
+        cutoff: Cutoff radius in Angstroms
+
+    Returns:
+        edges: Edge list as (N, 2) array for 3D coordinate Hessian
+        n: Number of DOFs (atoms * 3)
+    """
+    import numpy as np
+    from scipy.sparse import coo_matrix
+
+    # Get atomic positions
+    pos = g.ndata["pos"]  # Shape: (num_atoms, 3)
+    num_atoms = g.num_nodes()
+    
+    # Compute pairwise distances
+    # Convert to numpy for scipy operations (detach to remove gradient tracking)
+    pos_np = pos.detach().cpu().numpy()
+    
+    # Compute all pairwise distances
+    # pos_np shape: (num_atoms, 3)
+    # We compute distances: ||pos_i - pos_j|| for all i, j
+    diff = pos_np[:, np.newaxis, :] - pos_np[np.newaxis, :, :]  # (num_atoms, num_atoms, 3)
+    distances = np.linalg.norm(diff, axis=2)  # (num_atoms, num_atoms)
+    
+    # Create adjacency matrix based on cutoff
+    # Include self-loops (diagonal) and pairs within cutoff
+    adjacency = (distances <= cutoff).astype(float)
+    adjacency = coo_matrix(adjacency)
+    
+    # Get number of DOFs
+    n = num_atoms * 3  # 3 DOFs per atom
+    
+    # Expand to 3D coordinates using sparse Kronecker product
+    # Each atom-atom interaction becomes 3x3 block
+    from scipy.sparse import kron
+    ones_3x3 = coo_matrix(np.ones((3, 3)))
+    expanded_sparsity = kron(adjacency, ones_3x3).tocoo()
+    
+    # Create edge list from sparse matrix
+    edges = np.vstack((expanded_sparsity.row, expanded_sparsity.col)).T
+    
+    return edges, n

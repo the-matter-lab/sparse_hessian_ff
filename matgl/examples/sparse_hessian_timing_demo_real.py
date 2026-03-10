@@ -52,7 +52,7 @@ print('Max percentage difference between naive and distance two:', (np.abs(hessi
 print('Max percentage difference between naive and star:', (np.abs(hessian_naive - hessian_star)/(np.abs(hessian_naive)+1e-4)).max())
 print('Max percentage difference between naive and acyclic:', (np.abs(hessian_naive - hessian_acyclic)/(np.abs(hessian_naive)+1e-4)).max())
 
-first_n_eigvals = 10
+first_n_eigvals = 100
 print('Average percentage difference between naive and distance two of first {} eigvals:'.format(first_n_eigvals), (np.abs(np.linalg.eigvals(hessian_naive)[:first_n_eigvals] - np.linalg.eigvals(hessian_distance_two)[:first_n_eigvals])/(np.abs(np.linalg.eigvals(hessian_naive)[:first_n_eigvals])+1e-5)).mean())
 print('Average percentage difference between naive and star of first {} eigvals:'.format(first_n_eigvals), (np.abs(np.linalg.eigvals(hessian_naive)[:first_n_eigvals] - np.linalg.eigvals(hessian_star)[:first_n_eigvals])/(np.abs(np.linalg.eigvals(hessian_naive)[:first_n_eigvals])+1e-5)).mean())
 print('Average percentage difference between naive and acyclic of first {} eigvals:'.format(first_n_eigvals), (np.abs(np.linalg.eigvals(hessian_naive)[:first_n_eigvals] - np.linalg.eigvals(hessian_acyclic)[:first_n_eigvals])/(np.abs(np.linalg.eigvals(hessian_naive)[:first_n_eigvals])+1e-5)).mean())

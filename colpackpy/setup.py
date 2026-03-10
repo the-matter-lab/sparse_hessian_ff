@@ -23,7 +23,8 @@ ext = Pybind11Extension(
     library_dirs=[os.path.join(colpack_root, 'build/cmake/mywork')],
     libraries=["ColPack", "dl"],
     extra_compile_args=["-O3", "-std=c++17"],
-    extra_link_args=["-Wl,-rpath='$ORIGIN'"],
+    # Keep runtime lookup relative to the extension location.
+    extra_link_args=["-Wl,-rpath,$ORIGIN"],
 )
 
 class CMakeBuild(_build_ext):

@@ -181,8 +181,9 @@ def compute_sparse_hessian_fn(
 
     # Compute compressed Hessian: Y = H @ S
     for i in range(0, num_colors):
-        tangent = S[:,i].reshape(x.shape[0], x.shape[1])
-        Y_block = hvp_fn(x, tangent).reshape(S.shape[0],1)
+        # Match tangent shape to x so this works for both vector and tensor inputs.
+        tangent = S[:, i].reshape_as(x)
+        Y_block = hvp_fn(x, tangent).reshape(S.shape[0], 1)
         if i == 0:
             Y = Y_block
         else:

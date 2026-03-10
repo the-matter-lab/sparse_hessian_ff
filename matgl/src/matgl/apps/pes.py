@@ -14,7 +14,7 @@ from torch.func import jvp
 import matgl
 from matgl.layers import AtomRef, NuclearRepulsion
 from matgl.utils.io import IOMixIn
-from matgl.graph.compute import create_sparsity_pattern_from_graph
+from matgl.graph.compute import create_sparsity_pattern_from_graph, create_sparsity_pattern_from_cutoff
 try:
     from colpackpy.coloring import get_seeds_from_pattern   # returns (S, colors, comps)
     from colpackpy.recovery import recover_matrix            # your function we modified
@@ -69,6 +69,7 @@ class Potential(nn.Module, IOMixIn):
         hessian_delta: float = 1e-2, # Finite difference step size
         hessian_return_type: str = "dense", # "sparse" | "dense"
         return_seed_matrix: bool = False, # Return seed matrix along with hessian
+        hessian_sparsity_cutoff: float | None = None, # Cutoff radius for sparsity pattern (Angstroms). If None, uses graph-based sparsity from num_layers
     ):
         """Initialize Potential from a model and elemental references.
 
@@ -89,6 +90,7 @@ class Potential(nn.Module, IOMixIn):
             hessian_delta: Finite difference step size
             hessian_return_type: Return type for hessian calculation, sparse or dense arrays
             return_seed_matrix: Whether to return the seed matrix along with the hessian for sparse algorithms
+            hessian_sparsity_cutoff: Cutoff radius for sparsity pattern (Angstroms). If None, uses graph-based sparsity from num_layers. If provided, creates sparsity pattern based on geometric distance rather than graph connectivity.
         """
         super().__init__()
         self.save_args(locals())
@@ -105,6 +107,7 @@ class Potential(nn.Module, IOMixIn):
         self.return_seed_matrix = return_seed_matrix
         self.hessian_from_finite_differences = hessian_from_finite_differences
         self.hessian_delta = hessian_delta
+        self.hessian_sparsity_cutoff = hessian_sparsity_cutoff
         if calc_repuls:
             self.repuls = NuclearRepulsion(self.model.cutoff, trainable=zbl_trainable)
 
@@ -195,8 +198,13 @@ class Potential(nn.Module, IOMixIn):
                         hessian = (hessian, torch.eye(hessian.shape[0], device=hessian.device))
                 elif self.hessian_algorithm in ["distance_two", "star", "acyclic"]:
                     # Pass the already computed gradients to avoid recomputation
-                    num_layers = len(self.model.layers) if hasattr(self.model, 'layers') else 1
-                    sparsity_pattern, n = create_sparsity_pattern_from_graph(g, num_layers)
+                    if self.hessian_sparsity_cutoff is not None:
+                        # Use cutoff-based sparsity pattern
+                        sparsity_pattern, n = create_sparsity_pattern_from_cutoff(g, self.hessian_sparsity_cutoff)
+                    else:
+                        # Use graph-based sparsity pattern (default)
+                        num_layers = len(self.model.layers) if hasattr(self.model, 'layers') else 1
+                        sparsity_pattern, n = create_sparsity_pattern_from_graph(g, num_layers)
                     if self.hessian_from_finite_differences:
                         def total_energies_fn(x):
                             g.ndata["pos"] = x
