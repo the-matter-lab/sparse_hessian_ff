@@ -213,11 +213,30 @@ class Potential(nn.Module, IOMixIn):
                             return total_energies
                         # If we want to use finite differences, we need to use the functional API to provide the function that 
                         # then generates the finite difference Hessian-vector product.
-                        hessian = compute_sparse_hessian_fn(total_energies_fn, g.ndata["pos"], sparsity_pattern, n, coloring_algorithm=self.hessian_algorithm, return_seed_matrix=self.return_seed_matrix, use_finite_differences=self.hessian_from_finite_differences, delta=self.hessian_delta)
+                        hessian_out = compute_sparse_hessian_fn(
+                            total_energies_fn,
+                            g.ndata["pos"],
+                            sparsity_pattern,
+                            n,
+                            coloring_algorithm=self.hessian_algorithm,
+                            return_seed_matrix=self.return_seed_matrix,
+                            use_finite_differences=self.hessian_from_finite_differences,
+                            delta=self.hessian_delta,
+                        )
                     else:
                         # If we want to use autodiff, we need to use the non-functional API because pytorch's functional API
                         # does not support hessian vector products for sparse operations like scatter
-                        hessian = compute_sparse_hessian(total_energies, g.ndata["pos"], sparsity_pattern, n, self.hessian_algorithm, precomputed_grads=grads[0], return_seed_matrix=self.return_seed_matrix, hessian_return_type=self.hessian_return_type)
+                        hessian_out = compute_sparse_hessian(
+                            total_energies,
+                            g.ndata["pos"],
+                            sparsity_pattern,
+                            n,
+                            self.hessian_algorithm,
+                            precomputed_grads=grads[0],
+                            return_seed_matrix=self.return_seed_matrix,
+                            hessian_return_type=self.hessian_return_type,
+                        )
+                    hessian = hessian_out
 
         if self.calc_stresses:
             volume = (

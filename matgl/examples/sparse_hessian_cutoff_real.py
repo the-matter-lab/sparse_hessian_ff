@@ -184,7 +184,7 @@ plt.savefig(hvp_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved HVP plot to: {hvp_plot_path}")
 
-# Plot 3: Eigenvalue percentage difference vs Cutoff
+# Plot 3: Eigenvalue relative error vs Cutoff
 plt.figure(figsize=(10, 6))
 for alg in algorithms:
     valid_cutoffs, valid_eigenval_errors = get_valid_xy(cutoffs, eigenval_errors[alg], require_positive_y=True)
@@ -192,8 +192,8 @@ for alg in algorithms:
         plt.plot(valid_cutoffs, valid_eigenval_errors, marker='^', label=alg.replace('_', ' ').title(), linewidth=2, markersize=6)
 
 plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
-plt.ylabel(f'Average Percentage Difference (First {first_n_eigvals} Eigenvalues)', fontsize=12)
-plt.title(f'Eigenvalue Percentage Difference vs Cutoff Radius (First {first_n_eigvals} Eigenvalues)', fontsize=14, fontweight='bold')
+plt.ylabel(f'Average Relative Error (First {first_n_eigvals} Eigenvalues)', fontsize=12)
+plt.title(f'Eigenvalue Relative Error vs Cutoff Radius (First {first_n_eigvals} Eigenvalues)', fontsize=14, fontweight='bold')
 plt.legend(fontsize=10)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
@@ -203,7 +203,7 @@ plt.savefig(eigenval_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved eigenvalue comparison plot to: {eigenval_plot_path}")
 
-# Plot 3b: All-eigenvalue percentage difference vs Cutoff
+# Plot 3b: All-eigenvalue relative error vs Cutoff
 plt.figure(figsize=(10, 6))
 for alg in algorithms:
     valid_cutoffs, valid_eigenval_errors_all = get_valid_xy(cutoffs, eigenval_errors_all[alg], require_positive_y=True)
@@ -218,8 +218,8 @@ for alg in algorithms:
         )
 
 plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
-plt.ylabel('Average Percentage Difference (All Eigenvalues)', fontsize=12)
-plt.title('Eigenvalue Percentage Difference vs Cutoff Radius (All Eigenvalues, +1e-7 Regularization)', fontsize=14, fontweight='bold')
+plt.ylabel('Average Relative Error (All Eigenvalues)', fontsize=12)
+plt.title('Eigenvalue Relative Error vs Cutoff Radius (All Eigenvalues, +1e-7 Regularization)', fontsize=14, fontweight='bold')
 plt.legend(fontsize=10)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
@@ -255,7 +255,7 @@ plt.savefig(error_hvp_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved error vs HVP plot to: {error_hvp_plot_path}")
 
-# Plot 5: Eigenvalue percentage difference vs Number of HVPs
+# Plot 5: Eigenvalue relative error vs Number of HVPs
 plt.figure(figsize=(10, 6))
 for alg in algorithms:
     valid_hvps, valid_eigenval_errors = get_valid_xy(n_hvps[alg], eigenval_errors[alg], require_positive_y=True)
@@ -263,8 +263,8 @@ for alg in algorithms:
         plt.plot(valid_hvps, valid_eigenval_errors, marker='^', label=alg.replace('_', ' ').title(), linewidth=2, markersize=6)
 
 plt.xlabel('Number of Hessian-Vector Products', fontsize=12)
-plt.ylabel(f'Average Percentage Difference (First {first_n_eigvals} Eigenvalues)', fontsize=12)
-plt.title(f'Eigenvalue Percentage Difference vs Number of HVPs (First {first_n_eigvals} Eigenvalues)', fontsize=14, fontweight='bold')
+plt.ylabel(f'Average Relative Error (First {first_n_eigvals} Eigenvalues)', fontsize=12)
+plt.title(f'Eigenvalue Relative Error vs Number of HVPs (First {first_n_eigvals} Eigenvalues)', fontsize=14, fontweight='bold')
 plt.axvline(
     x=full_hessian_rows,
     color='red',
@@ -281,7 +281,7 @@ plt.savefig(eigenval_hvp_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved eigenvalue vs HVP plot to: {eigenval_hvp_plot_path}")
 
-# Plot 5b: All-eigenvalue percentage difference vs Number of HVPs
+# Plot 5b: All-eigenvalue relative error vs Number of HVPs
 plt.figure(figsize=(10, 6))
 for alg in algorithms:
     valid_hvps, valid_eigenval_errors_all = get_valid_xy(n_hvps[alg], eigenval_errors_all[alg], require_positive_y=True)
@@ -296,8 +296,8 @@ for alg in algorithms:
         )
 
 plt.xlabel('Number of Hessian-Vector Products', fontsize=12)
-plt.ylabel('Average Percentage Difference (All Eigenvalues)', fontsize=12)
-plt.title('Eigenvalue Percentage Difference vs Number of HVPs (All Eigenvalues, +1e-7 Regularization)', fontsize=14, fontweight='bold')
+plt.ylabel('Average Relative Error (All Eigenvalues)', fontsize=12)
+plt.title('Eigenvalue Relative Error vs Number of HVPs (All Eigenvalues, +1e-7 Regularization)', fontsize=14, fontweight='bold')
 plt.axvline(
     x=full_hessian_rows,
     color='red',

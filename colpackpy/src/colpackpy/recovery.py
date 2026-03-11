@@ -129,11 +129,28 @@ def recover_matrix(
                     A_rec[ar, ar] = Y[ar, colors]
                 return A_rec
 
-            Y_work = Y.clone()     # keep it differentiable
-            A_rec = torch.zeros((n, n), dtype=t_dtype, device=device)
-            if n > 0:
-                ar = torch.arange(n, device=device)
-                A_rec[ar, ar] = Y_work[ar, colors]
+            # On CUDA, scalar tensor updates inside Python loops are very expensive.
+            # Use a CPU staging buffer for recovery and copy back once at the end.
+            use_cpu_fast_path = (device.type == "cuda")
+            if use_cpu_fast_path:
+                if t_dtype in (torch.float16, torch.float32, torch.bfloat16):
+                    np_dtype = np.float32
+                else:
+                    np_dtype = np.float64
+                Y_work_np = Y.detach().cpu().numpy().astype(np_dtype, copy=True)
+                A_rec_np = np.zeros((n, n), dtype=np_dtype)
+                if n > 0:
+                    A_rec_np[ii, ii] = Y_work_np[ii, colors_np]
+                op_x = []
+                op_y = []
+                op_cx = []
+                op_cy = []
+            else:
+                Y_work = Y.clone()     # keep it differentiable
+                A_rec = torch.zeros((n, n), dtype=t_dtype, device=device)
+                if n > 0:
+                    ar = torch.arange(n, device=device)
+                    A_rec[ar, ar] = Y_work[ar, colors]
 
             def peel_component(comp_vertices, comp_edges, c1, c2):
                 deg = {int(x): 0 for x in comp_vertices}
@@ -142,6 +159,7 @@ def recover_matrix(
                     a = int(a); b = int(b)
                     deg[a] += 1; deg[b] += 1
                     adj[a].append(b); adj[b].append(a)
+                next_pos = {x: 0 for x in deg}
 
                 q = deque([x for x in deg if deg[x] == 1])
 
@@ -149,15 +167,34 @@ def recover_matrix(
                     x = q.popleft()
                     if deg[x] != 1:
                         continue
-                    y = next((nb for nb in adj[x] if deg.get(nb, 0) > 0), None)
+                    y = None
+                    adj_x = adj[x]
+                    p = next_pos[x]
+                    while p < len(adj_x):
+                        nb = adj_x[p]
+                        if deg.get(nb, 0) > 0:
+                            y = nb
+                            break
+                        p += 1
+                    next_pos[x] = p
                     if y is None:
                         deg[x] = 0; continue
 
                     cx = int(colors_np[x]); cy = int(colors_np[y])
-                    a_xy = Y_work[x, cy]
-                    A_rec[x, y] = a_xy
-                    A_rec[y, x] = a_xy
-                    Y_work[y, cx] = Y_work[y, cx] - a_xy
+                    if use_cpu_fast_path:
+                        a_xy = Y_work_np[x, cy]
+                        A_rec_np[x, y] = a_xy
+                        A_rec_np[y, x] = a_xy
+                        Y_work_np[y, cx] -= a_xy
+                        op_x.append(x)
+                        op_y.append(y)
+                        op_cx.append(cx)
+                        op_cy.append(cy)
+                    else:
+                        a_xy = Y_work[x, cy]
+                        A_rec[x, y] = a_xy
+                        A_rec[y, x] = a_xy
+                        Y_work[y, cx] = Y_work[y, cx] - a_xy
 
                     deg[x] = 0
                     deg[y] -= 1
@@ -168,27 +205,111 @@ def recover_matrix(
                     raise ValueError(f"Cycle detected in 2-colored component (colors {c1},{c2})")
 
             if acyclic_components is not None and len(acyclic_components.get("edges", [])) > 0:
+                # Coalesce cached components by color-pair to reduce Python/autograd
+                # overhead from many tiny peel_component calls.
+                pair_to_edges = {}
+                pair_to_vertices = {}
                 for (c1, c2), comp_edges, comp_vertices in zip(
                     acyclic_components["color_pairs"],
                     acyclic_components["edges"],
                     acyclic_components["vertices"]
                 ):
-                    if comp_edges:
-                        peel_component(comp_vertices, comp_edges, int(c1), int(c2))
+                    if not comp_edges:
+                        continue
+                    c1 = int(c1)
+                    c2 = int(c2)
+                    if c1 > c2:
+                        c1, c2 = c2, c1
+                    key = (c1, c2)
+                    if key not in pair_to_edges:
+                        pair_to_edges[key] = []
+                        pair_to_vertices[key] = []
+                    pair_to_edges[key].extend(comp_edges)
+                    pair_to_vertices[key].extend(comp_vertices)
+
+                for (c1, c2), merged_edges in pair_to_edges.items():
+                    if merged_edges:
+                        peel_component(pair_to_vertices[(c1, c2)], merged_edges, c1, c2)
             else:
                 if u.size:
-                    col_u = colors_np[u]; col_v = colors_np[v]
-                    pair_uv = np.stack([np.minimum(col_u, col_v), np.maximum(col_u, col_v)], axis=1)
-                    unique_pairs = np.unique(pair_uv, axis=0)
-                    for c1, c2 in unique_pairs:
-                        if c1 == c2: continue
-                        mask = ((col_u == c1) & (col_v == c2)) | ((col_u == c2) & (col_v == c1))
-                        e_u = u[mask]; e_v = v[mask]
-                        if e_u.size == 0: continue
-                        comp_edges = list(map(tuple, np.stack([e_u, e_v], axis=1)))
-                        comp_vertices = np.unique(np.concatenate([e_u, e_v])).tolist()
-                        peel_component(comp_vertices, comp_edges, int(c1), int(c2))
+                    col_u = colors_np[u]
+                    col_v = colors_np[v]
+                    cmin = np.minimum(col_u, col_v)
+                    cmax = np.maximum(col_u, col_v)
+                    valid = (cmin != cmax)
+                    if np.any(valid):
+                        u_valid = u[valid]
+                        v_valid = v[valid]
+                        cmin_valid = cmin[valid]
+                        cmax_valid = cmax[valid]
+                        pair_code = cmin_valid * C + cmax_valid
+                        order = np.argsort(pair_code, kind='mergesort')
 
+                        start = 0
+                        while start < order.size:
+                            code = pair_code[order[start]]
+                            end = start + 1
+                            while end < order.size and pair_code[order[end]] == code:
+                                end += 1
+                            idx = order[start:end]
+                            e_u = u_valid[idx]
+                            e_v = v_valid[idx]
+                            comp_edges = list(map(tuple, np.stack([e_u, e_v], axis=1)))
+                            comp_vertices = np.unique(np.concatenate([e_u, e_v])).tolist()
+                            c1 = int(code // C)
+                            c2 = int(code % C)
+                            peel_component(comp_vertices, comp_edges, c1, c2)
+                            start = end
+
+            if use_cpu_fast_path:
+                A_fast = torch.as_tensor(A_rec_np, dtype=t_dtype, device=device)
+                if Y.requires_grad:
+                    colors_t = torch.as_tensor(colors_np, dtype=torch.long)
+                    op_x_t = torch.as_tensor(op_x, dtype=torch.long)
+                    op_y_t = torch.as_tensor(op_y, dtype=torch.long)
+                    op_cx_t = torch.as_tensor(op_cx, dtype=torch.long)
+                    op_cy_t = torch.as_tensor(op_cy, dtype=torch.long)
+
+                    class _AcyclicRecoverCpuAutograd(torch.autograd.Function):
+                        @staticmethod
+                        def forward(ctx, Y_in, colors_in, op_x_in, op_y_in, op_cx_in, op_cy_in, A_in):
+                            ctx.save_for_backward(colors_in, op_x_in, op_y_in, op_cx_in, op_cy_in)
+                            ctx.n = Y_in.shape[0]
+                            ctx.c = Y_in.shape[1]
+                            return A_in
+
+                        @staticmethod
+                        def backward(ctx, grad_A):
+                            colors_in, op_x_in, op_y_in, op_cx_in, op_cy_in = ctx.saved_tensors
+                            n = ctx.n
+                            c = ctx.c
+
+                            gA = grad_A.detach().cpu().numpy()
+                            gY_work = np.zeros((n, c), dtype=gA.dtype)
+
+                            op_x_np = op_x_in.cpu().numpy()
+                            op_y_np = op_y_in.cpu().numpy()
+                            op_cx_np = op_cx_in.cpu().numpy()
+                            op_cy_np = op_cy_in.cpu().numpy()
+
+                            for k in range(op_x_np.shape[0] - 1, -1, -1):
+                                xk = int(op_x_np[k])
+                                yk = int(op_y_np[k])
+                                cxk = int(op_cx_np[k])
+                                cyk = int(op_cy_np[k])
+                                ga = gA[xk, yk] + gA[yk, xk] - gY_work[yk, cxk]
+                                gY_work[xk, cyk] += ga
+
+                            grad_Y = gY_work
+                            colors_np_local = colors_in.cpu().numpy()
+                            grad_Y[np.arange(n), colors_np_local] += np.diag(gA)
+
+                            grad_Y_t = torch.as_tensor(grad_Y, dtype=grad_A.dtype, device=grad_A.device)
+                            return grad_Y_t, None, None, None, None, None, None
+
+                    A_rec = _AcyclicRecoverCpuAutograd.apply(Y, colors_t, op_x_t, op_y_t, op_cx_t, op_cy_t, A_fast)
+                else:
+                    A_rec = A_fast
             _verify(A_rec)
             return A_rec
 
@@ -213,7 +334,8 @@ def recover_matrix(
                 vals += [Y[u, colors[v]], Y[v, colors[u]]]
             vals = np.concatenate(vals)
             A_rec = sp.coo_matrix((vals, (rows, cols)), shape=(n, n)).tocsr()
-            return A_rec.astype(dtype, copy=False)
+            A_rec = A_rec.astype(dtype, copy=False)
+            return A_rec
         else:
             A_rec = np.zeros((n, n), dtype=dtype)
             if n > 0:
@@ -221,7 +343,8 @@ def recover_matrix(
                 if u.size:
                     A_rec[u, v] = Y[u, colors[v]]
                     A_rec[v, u] = Y[v, colors[u]]
-            return A_rec.astype(dtype, copy=False)
+            A_rec = A_rec.astype(dtype, copy=False)
+            return A_rec
 
     elif recover_from == 'STAR':
         col_stat = np.zeros((n, C), dtype=np.int32)
@@ -243,7 +366,8 @@ def recover_matrix(
                 rows += [u, v]; cols += [v, u]; vals += [val_uv, val_vu]
             rows = np.concatenate(rows); cols = np.concatenate(cols); vals = np.concatenate(vals)
             A_rec = sp.coo_matrix((vals, (rows, cols)), shape=(n, n)).tocsr()
-            return A_rec.astype(dtype, copy=False)
+            A_rec = A_rec.astype(dtype, copy=False)
+            return A_rec
         else:
             A_rec = np.zeros((n, n), dtype=dtype)
             if n > 0:
@@ -251,7 +375,8 @@ def recover_matrix(
                 if u.size:
                     A_rec[u, v] = val_uv
                     A_rec[v, u] = val_vu
-            return A_rec.astype(dtype, copy=False)
+            A_rec = A_rec.astype(dtype, copy=False)
+            return A_rec
 
     elif recover_from in ('ACYCLIC', 'ACYCLIC_INDIRECT', 'ACYCLIC_FOR_INDIRECT_RECOVERY'):
         if C <= 1:
@@ -263,7 +388,10 @@ def recover_matrix(
         Y_work = Y.astype(dtype, copy=True)
 
         if reconstruct_sparsely:
-            rows = [ii]; cols = [ii]; vals = [Y[ii, colors].astype(dtype, copy=False)]
+            diag_vals = Y[ii, colors].astype(dtype, copy=False)
+            rows_off = []
+            cols_off = []
+            vals_off = []
         else:
             A_rec = np.zeros((n, n), dtype=dtype)
             if n > 0:
@@ -290,9 +418,9 @@ def recover_matrix(
                 cx, cy = colors[x], colors[y]
                 a_xy = Y_work[x, cy]
                 if reconstruct_sparsely:
-                    rows.append(np.array([x, y], dtype=np.intp))
-                    cols.append(np.array([y, x], dtype=np.intp))
-                    vals.append(np.array([a_xy, a_xy], dtype=dtype))
+                    rows_off.extend((x, y))
+                    cols_off.extend((y, x))
+                    vals_off.extend((a_xy, a_xy))
                 else:
                     A_rec[x, y] = a_xy
                     A_rec[y, x] = a_xy
@@ -318,19 +446,42 @@ def recover_matrix(
         else:
             if u.size:
                 col_u, col_v = colors[u], colors[v]
-                pair_uv = np.stack([np.minimum(col_u, col_v), np.maximum(col_u, col_v)], axis=1)
-                unique_pairs = np.unique(pair_uv, axis=0)
-                for c1, c2 in unique_pairs:
-                    if c1 == c2: continue
-                    mask = ((col_u == c1) & (col_v == c2)) | ((col_u == c2) & (col_v == c1))
-                    e_u = u[mask]; e_v = v[mask]
-                    if e_u.size == 0: continue
-                    comp_edges = list(map(tuple, np.stack([e_u, e_v], axis=1)))
-                    comp_vertices = np.unique(np.concatenate([e_u, e_v])).tolist()
-                    peel_component(comp_vertices, comp_edges, int(c1), int(c2))
+                cmin = np.minimum(col_u, col_v)
+                cmax = np.maximum(col_u, col_v)
+                valid = (cmin != cmax)
+                if np.any(valid):
+                    u_valid = u[valid]
+                    v_valid = v[valid]
+                    cmin_valid = cmin[valid]
+                    cmax_valid = cmax[valid]
+                    pair_code = cmin_valid * C + cmax_valid
+                    order = np.argsort(pair_code, kind='mergesort')
+
+                    start = 0
+                    while start < order.size:
+                        code = pair_code[order[start]]
+                        end = start + 1
+                        while end < order.size and pair_code[order[end]] == code:
+                            end += 1
+                        idx = order[start:end]
+                        e_u = u_valid[idx]
+                        e_v = v_valid[idx]
+                        comp_edges = list(map(tuple, np.stack([e_u, e_v], axis=1)))
+                        comp_vertices = np.unique(np.concatenate([e_u, e_v])).tolist()
+                        c1 = int(code // C)
+                        c2 = int(code % C)
+                        peel_component(comp_vertices, comp_edges, c1, c2)
+                        start = end
 
         if reconstruct_sparsely:
-            rows = np.concatenate(rows); cols = np.concatenate(cols); vals = np.concatenate(vals)
+            if rows_off:
+                rows = np.concatenate([ii, np.asarray(rows_off, dtype=np.intp)])
+                cols = np.concatenate([ii, np.asarray(cols_off, dtype=np.intp)])
+                vals = np.concatenate([diag_vals, np.asarray(vals_off, dtype=dtype)])
+            else:
+                rows = ii
+                cols = ii
+                vals = diag_vals
             A_rec = sp.coo_matrix((vals, (rows, cols)), shape=(n, n)).tocsr()
 
         if verify:
@@ -344,7 +495,8 @@ def recover_matrix(
             if not np.isfinite(err_inf) or err_inf > 1e-4 * (np.linalg.norm(Y, ord=np.inf) + 1e-12):
                 raise AssertionError(f"Verification failed: ||A S - Y||_inf = {err_inf:.3e}")
 
-        return A_rec.astype(dtype, copy=False)
+        A_rec = A_rec.astype(dtype, copy=False)
+        return A_rec
 
     else:
         raise ValueError(f"Unknown recover_from: {recover_from}")

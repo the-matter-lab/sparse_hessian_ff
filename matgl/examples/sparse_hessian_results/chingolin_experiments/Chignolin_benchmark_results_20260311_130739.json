@@ -1,6 +1,6 @@
 {
   "dataset": "Chignolin",
-  "timestamp": "20250904_235709",
+  "timestamp": "20260311_130739",
   "note": "Results include GPU warm-up before each system. Hessian matrices saved separately as .npy files.",
   "results": [
     {
@@ -9,10 +9,10 @@
       "methods": {
         "naive": {
           "method": "naive",
-          "time": 13.897523880004883,
+          "time": 10.31159234046936,
           "time_std": 0.0,
           "times": [
-            13.897523880004883
+            10.31159234046936
           ],
           "hvp_count": 498,
           "hessian_shape": [
@@ -23,10 +23,10 @@
         },
         "star": {
           "method": "star",
-          "time": 11.589919567108154,
+          "time": 8.53202223777771,
           "time_std": 0.0,
           "times": [
-            11.589919567108154
+            8.53202223777771
           ],
           "hvp_count": 384,
           "hessian_shape": [
@@ -37,10 +37,10 @@
         },
         "acyclic": {
           "method": "acyclic",
-          "time": 9.31904649734497,
+          "time": 6.873966932296753,
           "time_std": 0.0,
           "times": [
-            9.31904649734497
+            6.873966932296753
           ],
           "hvp_count": 285,
           "hessian_shape": [
@@ -57,10 +57,10 @@
       "methods": {
         "naive": {
           "method": "naive",
-          "time": 13.903231859207153,
+          "time": 10.26526141166687,
           "time_std": 0.0,
           "times": [
-            13.903231859207153
+            10.26526141166687
           ],
           "hvp_count": 498,
           "hessian_shape": [
@@ -71,10 +71,10 @@
         },
         "star": {
           "method": "star",
-          "time": 12.77603816986084,
+          "time": 9.253495216369629,
           "time_std": 0.0,
           "times": [
-            12.77603816986084
+            9.253495216369629
           ],
           "hvp_count": 423,
           "hessian_shape": [
@@ -85,10 +85,10 @@
         },
         "acyclic": {
           "method": "acyclic",
-          "time": 10.108170509338379,
+          "time": 7.463795900344849,
           "time_std": 0.0,
           "times": [
-            10.108170509338379
+            7.463795900344849
           ],
           "hvp_count": 315,
           "hessian_shape": [
@@ -105,10 +105,10 @@
       "methods": {
         "naive": {
           "method": "naive",
-          "time": 14.088687896728516,
+          "time": 10.34171986579895,
           "time_std": 0.0,
           "times": [
-            14.088687896728516
+            10.34171986579895
           ],
           "hvp_count": 498,
           "hessian_shape": [
@@ -119,10 +119,10 @@
         },
         "star": {
           "method": "star",
-          "time": 11.571513175964355,
+          "time": 8.578256368637085,
           "time_std": 0.0,
           "times": [
-            11.571513175964355
+            8.578256368637085
           ],
           "hvp_count": 384,
           "hessian_shape": [
@@ -133,10 +133,10 @@
         },
         "acyclic": {
           "method": "acyclic",
-          "time": 9.004064321517944,
+          "time": 6.855817079544067,
           "time_std": 0.0,
           "times": [
-            9.004064321517944
+            6.855817079544067
           ],
           "hvp_count": 282,
           "hessian_shape": [
@@ -153,10 +153,10 @@
       "methods": {
         "naive": {
           "method": "naive",
-          "time": 13.948219299316406,
+          "time": 10.213372230529785,
           "time_std": 0.0,
           "times": [
-            13.948219299316406
+            10.213372230529785
           ],
           "hvp_count": 498,
           "hessian_shape": [
@@ -167,10 +167,10 @@
         },
         "star": {
           "method": "star",
-          "time": 7.469810247421265,
+          "time": 5.493850469589233,
           "time_std": 0.0,
           "times": [
-            7.469810247421265
+            5.493850469589233
           ],
           "hvp_count": 252,
           "hessian_shape": [
@@ -181,10 +181,10 @@
         },
         "acyclic": {
           "method": "acyclic",
-          "time": 5.1781392097473145,
+          "time": 3.936340808868408,
           "time_std": 0.0,
           "times": [
-            5.1781392097473145
+            3.936340808868408
           ],
           "hvp_count": 162,
           "hessian_shape": [

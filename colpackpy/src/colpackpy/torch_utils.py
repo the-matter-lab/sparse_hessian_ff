@@ -210,7 +210,6 @@ def compute_sparse_hessian_fn(
         'num_edges': len(sparsity_pattern),
         'compression_ratio': n / num_colors,
     }
-
     result = H
     if return_seed_matrix:
         result = H, S
@@ -227,7 +226,7 @@ def compute_sparse_hessian(y,
                         n, 
                         algorithm, 
                         precomputed_grads=None, 
-                        return_seed_matrix=False, 
+                        return_seed_matrix=False,
                         hessian_return_type="sparse"
                         ) -> Tensor | tuple[Tensor, Tensor]:
         """Compute sparse hessian using ColPack coloring algorithms.
@@ -311,7 +310,8 @@ def compute_sparse_hessian(y,
         
         # Return seed matrix if requested
         if return_seed_matrix:
-            return hessian_result, S
+            out = (hessian_result, S)
         else:
-            return hessian_result
+            out = hessian_result
+        return out
 

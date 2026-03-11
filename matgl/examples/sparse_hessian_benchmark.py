@@ -198,6 +198,7 @@ class HessianBenchmark:
     def plot_hessian_matrix(self, hessian, output_path, file_identifier, timestamp):
         """Create plots of the Hessian matrix and its sparsity pattern."""
         import matplotlib.pyplot as plt
+        from matplotlib.colors import BoundaryNorm, ListedColormap
         
         # Create sparsity pattern (boolean mask)
         sparsity_pattern = hessian != 0
@@ -216,19 +217,15 @@ class HessianBenchmark:
         
         # Plot the sparsity pattern
         plt.figure(figsize=(12, 10))
-        plt.imshow(sparsity_pattern, cmap='binary', aspect='equal')
+        sparse_cmap = ListedColormap(["white", "black"])
+        sparse_norm = BoundaryNorm([-0.5, 0.5, 1.5], sparse_cmap.N)
+        sparse_img = plt.imshow(sparsity_pattern.astype(int), cmap=sparse_cmap, norm=sparse_norm, aspect='equal')
         plt.title(f'Sparsity Pattern - {file_identifier}')
         plt.xlabel('DOF Index')
         plt.ylabel('DOF Index')
-        
-        # Add sparsity statistics
-        total_elements = hessian.size
-        nonzero_elements = np.count_nonzero(hessian)
-        sparsity_ratio = (total_elements - nonzero_elements) / total_elements
-        
-        plt.text(0.02, 0.98, f'Sparsity: {sparsity_ratio:.3f}\nNonzero: {nonzero_elements}/{total_elements}', 
-                transform=plt.gca().transAxes, fontsize=12, verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+        cbar = plt.colorbar(sparse_img, ticks=[0, 1])
+        cbar.ax.set_yticklabels(["0", "1"])
+        cbar.set_label("Sparsity Entry")
         
         sparsity_plot_file = output_path / f"sparsity_pattern_{file_identifier}_{timestamp}.png"
         plt.savefig(sparsity_plot_file, dpi=300, bbox_inches='tight')
@@ -279,10 +276,9 @@ class HessianBenchmark:
                 plt.bar(x + i * bar_width, method_times[method], bar_width,
                         label=method.capitalize(), color=colors[method])
         
-        plt.xlabel('Conformations', fontsize=14)
         plt.ylabel('Time (seconds)', fontsize=14)
         plt.title(f'Timing Comparison Across Conformations - {dataset_name}', fontsize=16)
-        plt.xticks(x + bar_width, conformation_names, rotation=45)
+        plt.xticks(x + bar_width, conformation_names, rotation=45, fontsize=14)
         plt.legend(fontsize=12)
         plt.grid(True, alpha=0.3, axis='y')
         plt.tight_layout()
@@ -300,10 +296,9 @@ class HessianBenchmark:
                 plt.bar(x + i * bar_width, method_hvps[method], bar_width,
                         label=method.capitalize(), color=colors[method])
         
-        plt.xlabel('Conformations', fontsize=14)
         plt.ylabel('Number of HVPs', fontsize=14)
         plt.title(f'HVP Count Comparison Across Conformations - {dataset_name}', fontsize=16)
-        plt.xticks(x + bar_width, conformation_names, rotation=45)
+        plt.xticks(x + bar_width, conformation_names, rotation=45, fontsize=14)
         plt.legend(fontsize=12)
         plt.grid(True, alpha=0.3, axis='y')
         plt.tight_layout()
