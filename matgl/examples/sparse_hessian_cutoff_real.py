@@ -17,6 +17,9 @@ matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+# Relative-error denominator regularization used for full-spectrum comparisons.
+FULL_SPECTRUM_REG_EPS = 1e-5
+
 # Load model and structure
 pot = matgl.load_model("../pretrained_models/TensorNet-ANI-1x-Subset-PES")
 pot.calc_hessian = True
@@ -26,6 +29,61 @@ atoms = read('/h/28/lucahiede/Projects/sparse_hessian_ff/data/Water Cluster/76.x
 
 calc = PESCalculator(pot)
 
+
+def get_vibrational_basis_from_eckart(atoms_obj, tol=1e-10):
+    """Build a Cartesian basis orthogonal to rigid-body Eckart modes."""
+    masses = np.asarray(atoms_obj.get_masses(), dtype=float)
+    coords = np.asarray(atoms_obj.get_positions(), dtype=float)
+    n_atoms = masses.shape[0]
+    ndof = 3 * n_atoms
+
+    center_of_mass = np.average(coords, axis=0, weights=masses)
+    coords_rel = coords - center_of_mass
+    sqrt_m = np.sqrt(masses)
+
+    rigid_modes = []
+
+    # Mass-weighted translations.
+    for axis in range(3):
+        mode = np.zeros(ndof, dtype=float)
+        for atom_idx in range(n_atoms):
+            mode[3 * atom_idx + axis] = sqrt_m[atom_idx]
+        rigid_modes.append(mode)
+
+    # Mass-weighted rotations.
+    unit_axes = np.eye(3)
+    for axis in range(3):
+        mode = np.zeros(ndof, dtype=float)
+        for atom_idx in range(n_atoms):
+            rot_vec = np.cross(unit_axes[axis], coords_rel[atom_idx])
+            mode[3 * atom_idx : 3 * atom_idx + 3] = sqrt_m[atom_idx] * rot_vec
+        rigid_modes.append(mode)
+
+    rigid_mat = np.column_stack(rigid_modes)  # (3N, 6)
+    q_rigid, r_rigid = np.linalg.qr(rigid_mat, mode="reduced")
+    rigid_rank = int(np.sum(np.abs(np.diag(r_rigid)) > tol))
+    q_rigid = q_rigid[:, :rigid_rank]
+
+    q_full, _ = np.linalg.qr(q_rigid, mode="complete")
+    vib_basis = q_full[:, rigid_rank:]
+    return vib_basis
+
+
+def mass_weight_hessian(hessian, masses):
+    """Convert Cartesian Hessian to mass-weighted form M^{-1/2} H M^{-1/2}."""
+    inv_sqrt_m = 1.0 / np.sqrt(np.asarray(masses, dtype=float))
+    inv_sqrt_m_xyz = np.repeat(inv_sqrt_m, 3)
+    return (inv_sqrt_m_xyz[:, None] * hessian) * inv_sqrt_m_xyz[None, :]
+
+
+def projected_vibrational_eigvals(hessian, masses, vib_basis):
+    """Eigenvalues after projecting out rigid-body modes via Eckart basis."""
+    hessian_mw = mass_weight_hessian(hessian, masses)
+    hessian_vib = vib_basis.T @ hessian_mw @ vib_basis
+    # Numerical guard: keep matrix Hermitian for eigvalsh.
+    hessian_vib = 0.5 * (hessian_vib + hessian_vib.T)
+    return np.linalg.eigvalsh(hessian_vib)
+
 # Compute naive hessian (reference)
 print("Computing naive hessian...")
 pot.hessian_algorithm = "naive"
@@ -34,6 +92,8 @@ calc.calculate(atoms, properties=['hessian'])
 hessian_naive = np.array(calc.results['hessian'])
 full_hessian_rows = hessian_naive.shape[0]
 print(f"Full Hessian dimension: {full_hessian_rows} x {full_hessian_rows}")
+masses = np.asarray(atoms.get_masses(), dtype=float)
+vib_basis = get_vibrational_basis_from_eckart(atoms)
 
 # Cutoffs to test
 cutoffs = np.arange(5, 13, 1)  # 5 to 12 Angstroms
@@ -91,20 +151,20 @@ for cutoff in cutoffs:
 
 # Create plots
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-output_dir = "sparse_hessian_results/cutoff_experiments"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+output_dir = os.path.join(script_dir, "sparse_hessian_results", "cutoff_experiments")
 os.makedirs(output_dir, exist_ok=True)
 
 # Compute eigenvalue differences
 eigenval_errors = {alg: [] for alg in algorithms}
 eigenval_errors_all = {alg: [] for alg in algorithms}
-eigvals_naive = np.linalg.eigvals(hessian_naive)
-eigvals_naive_sorted = np.sort(np.real(eigvals_naive))[:first_n_eigvals]
-eigvals_naive_all_sorted = np.sort(np.real(eigvals_naive))
+eigvals_naive_proj_sorted = np.sort(projected_vibrational_eigvals(hessian_naive, masses, vib_basis))
+eigvals_naive_first_sorted = eigvals_naive_proj_sorted[:first_n_eigvals]
 
 # Store per-eigenvalue percentage errors for every cutoff/algorithm.
 # Shape per algorithm: (n_cutoffs, n_eigvals), NaN where run is invalid/skipped.
 per_eig_errors_all = {
-    alg: np.full((len(cutoffs), len(eigvals_naive_all_sorted)), np.nan, dtype=float)
+    alg: np.full((len(cutoffs), len(eigvals_naive_proj_sorted)), np.nan, dtype=float)
     for alg in algorithms
 }
 
@@ -112,14 +172,17 @@ for i, cutoff in enumerate(cutoffs):
     for alg in algorithms:
         if i < len(hessians[alg]) and hessians[alg][i] is not None:
             try:
-                eigvals_sparse = np.linalg.eigvals(hessians[alg][i])
-                eigvals_sparse_sorted = np.sort(np.real(eigvals_sparse))[:first_n_eigvals]
-                eigvals_sparse_all_sorted = np.sort(np.real(eigvals_sparse))
+                eigvals_sparse_proj_sorted = np.sort(
+                    projected_vibrational_eigvals(hessians[alg][i], masses, vib_basis)
+                )
+                eigvals_sparse_first_sorted = eigvals_sparse_proj_sorted[:first_n_eigvals]
                 # Average percentage difference
-                pct_diff = np.abs(eigvals_naive_sorted - eigvals_sparse_sorted) / (np.abs(eigvals_naive_sorted) + 1e-5)
+                pct_diff = np.abs(eigvals_naive_first_sorted - eigvals_sparse_first_sorted) / (
+                    np.abs(eigvals_naive_first_sorted) + 1e-5
+                )
                 eigenval_errors[alg].append(pct_diff.mean())
-                pct_diff_all = np.abs(eigvals_naive_all_sorted - eigvals_sparse_all_sorted) / (
-                    np.abs(eigvals_naive_all_sorted) + 1e-7
+                pct_diff_all = np.abs(eigvals_naive_proj_sorted - eigvals_sparse_proj_sorted) / (
+                    np.abs(eigvals_naive_proj_sorted) + FULL_SPECTRUM_REG_EPS
                 )
                 eigenval_errors_all[alg].append(pct_diff_all.mean())
                 per_eig_errors_all[alg][i, :] = pct_diff_all
@@ -149,7 +212,6 @@ for alg in algorithms:
 
 plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
 plt.ylabel('Max Absolute Error vs Naive', fontsize=12)
-plt.title('Hessian Error vs Cutoff Radius', fontsize=14, fontweight='bold')
 plt.legend(fontsize=10)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
@@ -168,7 +230,6 @@ for alg in algorithms:
 
 plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
 plt.ylabel('Number of Hessian-Vector Products', fontsize=12)
-plt.title('Number of HVPs vs Cutoff Radius', fontsize=14, fontweight='bold')
 plt.axhline(
     y=full_hessian_rows,
     color='red',
@@ -193,7 +254,6 @@ for alg in algorithms:
 
 plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
 plt.ylabel(f'Average Relative Error (First {first_n_eigvals} Eigenvalues)', fontsize=12)
-plt.title(f'Eigenvalue Relative Error vs Cutoff Radius (First {first_n_eigvals} Eigenvalues)', fontsize=14, fontweight='bold')
 plt.legend(fontsize=10)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
@@ -219,7 +279,6 @@ for alg in algorithms:
 
 plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
 plt.ylabel('Average Relative Error (All Eigenvalues)', fontsize=12)
-plt.title('Eigenvalue Relative Error vs Cutoff Radius (All Eigenvalues, +1e-7 Regularization)', fontsize=14, fontweight='bold')
 plt.legend(fontsize=10)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
@@ -238,7 +297,6 @@ for alg in algorithms:
 
 plt.xlabel('Number of Hessian-Vector Products', fontsize=12)
 plt.ylabel('Max Absolute Error vs Naive', fontsize=12)
-plt.title('Hessian Error vs Number of HVPs', fontsize=14, fontweight='bold')
 plt.axvline(
     x=full_hessian_rows,
     color='red',
@@ -264,7 +322,6 @@ for alg in algorithms:
 
 plt.xlabel('Number of Hessian-Vector Products', fontsize=12)
 plt.ylabel(f'Average Relative Error (First {first_n_eigvals} Eigenvalues)', fontsize=12)
-plt.title(f'Eigenvalue Relative Error vs Number of HVPs (First {first_n_eigvals} Eigenvalues)', fontsize=14, fontweight='bold')
 plt.axvline(
     x=full_hessian_rows,
     color='red',
@@ -297,7 +354,6 @@ for alg in algorithms:
 
 plt.xlabel('Number of Hessian-Vector Products', fontsize=12)
 plt.ylabel('Average Relative Error (All Eigenvalues)', fontsize=12)
-plt.title('Eigenvalue Relative Error vs Number of HVPs (All Eigenvalues, +1e-7 Regularization)', fontsize=14, fontweight='bold')
 plt.axvline(
     x=full_hessian_rows,
     color='red',
@@ -331,14 +387,17 @@ for col_idx, alg in enumerate(algorithms):
     if representative_idx is None:
         ax_top.text(0.5, 0.5, 'No valid run', ha='center', va='center', transform=ax_top.transAxes)
         ax_bottom.text(0.5, 0.5, 'No valid run', ha='center', va='center', transform=ax_bottom.transAxes)
-        ax_top.set_title(alg.replace('_', ' ').title())
         continue
 
     cutoff_value = cutoffs[representative_idx]
     hvp_value = n_hvps[alg][representative_idx]
 
-    eigvals_sparse_sorted = np.sort(np.real(np.linalg.eigvals(hessians[alg][representative_idx])))
-    eigval_pct_error = np.abs(eigvals_naive_all_sorted - eigvals_sparse_sorted) / (np.abs(eigvals_naive_all_sorted) + 1e-7)
+    eigvals_sparse_proj_sorted = np.sort(
+        projected_vibrational_eigvals(hessians[alg][representative_idx], masses, vib_basis)
+    )
+    eigval_pct_error = np.abs(eigvals_naive_proj_sorted - eigvals_sparse_proj_sorted) / (
+        np.abs(eigvals_naive_proj_sorted) + FULL_SPECTRUM_REG_EPS
+    )
     finite_errors = eigval_pct_error[np.isfinite(eigval_pct_error)]
     if finite_errors.size > 0:
         top_cap = float(np.percentile(finite_errors, 99.5))
@@ -351,27 +410,29 @@ for col_idx, alg in enumerate(algorithms):
     ax_top.bar(eig_indices, eigval_pct_error_plot, width=0.9, color='tab:blue', alpha=0.9, edgecolor='none')
     ax_top.set_ylim(0.0, top_cap * 1.05)
     ax_top.grid(True, alpha=0.3, axis='y')
-    ax_top.set_title(
-        f"{alg.replace('_', ' ').title()} (cutoff={cutoff_value}, HVP={int(hvp_value)})",
-        fontsize=11,
-    )
     if col_idx == 0:
         ax_top.set_ylabel('Eigenvalue % Error', fontsize=11)
     ax_top.set_xlabel('Eigenvalue Index', fontsize=10)
 
-    eig_span = float(np.max(eigvals_naive_all_sorted) - np.min(eigvals_naive_all_sorted))
-    bar_width = eig_span / max(len(eigvals_naive_all_sorted) * 1.5, 1)
+    eig_span = float(np.max(eigvals_naive_proj_sorted) - np.min(eigvals_naive_proj_sorted))
+    bar_width = eig_span / max(len(eigvals_naive_proj_sorted) * 1.5, 1)
     if not np.isfinite(bar_width) or bar_width <= 0:
         bar_width = 1e-3
 
-    ax_bottom.bar(eigvals_naive_all_sorted, eigval_pct_error_plot, width=bar_width, color='tab:orange', alpha=0.9, edgecolor='none')
+    ax_bottom.bar(
+        eigvals_naive_proj_sorted,
+        eigval_pct_error_plot,
+        width=bar_width,
+        color='tab:orange',
+        alpha=0.9,
+        edgecolor='none',
+    )
     ax_bottom.set_ylim(0.0, top_cap * 1.05)
     ax_bottom.grid(True, alpha=0.3, axis='y')
     if col_idx == 0:
         ax_bottom.set_ylabel('Eigenvalue % Error', fontsize=11)
     ax_bottom.set_xlabel('Ground-Truth Eigenvalue', fontsize=10)
 
-fig.suptitle('Per-Eigenvalue Percentage Error (All Eigenvalues, +1e-7 Regularization)', fontsize=14, fontweight='bold')
 plt.tight_layout(rect=[0, 0, 1, 0.96])
 per_eigen_plot_path = f"{output_dir}/per_eigenvalue_error_bars_{timestamp}.png"
 plt.savefig(per_eigen_plot_path, dpi=300, bbox_inches='tight')
@@ -384,7 +445,7 @@ np.savez_compressed(
     debug_data_path,
     cutoffs=np.asarray(cutoffs, dtype=float),
     full_hessian_rows=np.asarray([full_hessian_rows], dtype=int),
-    eigvals_naive_all_sorted=np.asarray(eigvals_naive_all_sorted, dtype=float),
+    eigvals_naive_eckart_projected_sorted=np.asarray(eigvals_naive_proj_sorted, dtype=float),
     errors_distance_two=np.asarray(errors["distance_two"], dtype=float),
     errors_star=np.asarray(errors["star"], dtype=float),
     errors_acyclic=np.asarray(errors["acyclic"], dtype=float),

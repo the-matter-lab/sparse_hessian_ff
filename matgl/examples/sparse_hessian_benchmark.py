@@ -96,6 +96,8 @@ class HessianBenchmark:
         """Benchmark all xyz files in a directory, with optional test_over_conformations."""
         data_path = Path(data_dir)
         output_path = Path(output_dir)
+        if not output_path.is_absolute():
+            output_path = Path(__file__).resolve().parent / output_path
         output_path.mkdir(exist_ok=True)
         
         # Get all xyz files
@@ -207,7 +209,6 @@ class HessianBenchmark:
         plt.figure(figsize=(12, 10))
         plt.imshow(hessian, cmap='RdBu_r', aspect='equal')
         plt.colorbar(label='Hessian Value')
-        plt.title(f'Hessian Matrix - {file_identifier}')
         plt.xlabel('DOF Index')
         plt.ylabel('DOF Index')
         
@@ -220,7 +221,6 @@ class HessianBenchmark:
         sparse_cmap = ListedColormap(["white", "black"])
         sparse_norm = BoundaryNorm([-0.5, 0.5, 1.5], sparse_cmap.N)
         sparse_img = plt.imshow(sparsity_pattern.astype(int), cmap=sparse_cmap, norm=sparse_norm, aspect='equal')
-        plt.title(f'Sparsity Pattern - {file_identifier}')
         plt.xlabel('DOF Index')
         plt.ylabel('DOF Index')
         cbar = plt.colorbar(sparse_img, ticks=[0, 1])
@@ -277,7 +277,6 @@ class HessianBenchmark:
                         label=method.capitalize(), color=colors[method])
         
         plt.ylabel('Time (seconds)', fontsize=14)
-        plt.title(f'Timing Comparison Across Conformations - {dataset_name}', fontsize=16)
         plt.xticks(x + bar_width, conformation_names, rotation=45, fontsize=14)
         plt.legend(fontsize=12)
         plt.grid(True, alpha=0.3, axis='y')
@@ -297,7 +296,6 @@ class HessianBenchmark:
                         label=method.capitalize(), color=colors[method])
         
         plt.ylabel('Number of HVPs', fontsize=14)
-        plt.title(f'HVP Count Comparison Across Conformations - {dataset_name}', fontsize=16)
         plt.xticks(x + bar_width, conformation_names, rotation=45, fontsize=14)
         plt.legend(fontsize=12)
         plt.grid(True, alpha=0.3, axis='y')
@@ -381,7 +379,6 @@ class HessianBenchmark:
         
         plt.xlabel('Number of Atoms', fontsize=14)
         plt.ylabel('Number of HVPs', fontsize=14)
-        plt.title(f'HVP Count Comparison - {dataset_name}\n(with GPU warm-up)', fontsize=16)
         plt.legend(fontsize=12)
         plt.grid(True, alpha=0.3)
         # Use linear scale to better show differences between methods
@@ -404,7 +401,6 @@ class HessianBenchmark:
         
         plt.xlabel('Number of Atoms', fontsize=14)
         plt.ylabel('Wall Clock Time (seconds)', fontsize=14)
-        plt.title(f'Timing Comparison - {dataset_name}\n(with GPU warm-up and error bars)', fontsize=16)
         plt.legend(fontsize=12)
         plt.grid(True, alpha=0.3)
         # Use linear scale to better show differences between methods
@@ -450,7 +446,7 @@ def main():
     """Main function to run benchmarks."""
     # Configuration
     DATA_DIR = "/h/28/lucahiede/Projects/sparse_hessian_ff/data/Chignolin"
-    OUTPUT_DIR = "/h/28/lucahiede/Projects/sparse_hessian_ff/matgl/examples/sparse_hessian_results"
+    OUTPUT_DIR = str(Path(__file__).resolve().parent / "sparse_hessian_results")
     
     print("Starting Hessian Benchmark Suite (with GPU warm-up)")
     print("=" * 60)
