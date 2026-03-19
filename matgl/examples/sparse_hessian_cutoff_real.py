@@ -20,6 +20,24 @@ from datetime import datetime
 # Relative-error denominator regularization used for full-spectrum comparisons.
 FULL_SPECTRUM_REG_EPS = 1e-5
 
+# Plot styling (paper readability)
+# Historically, axis labels used fontsize=12 in this script.
+LABEL_FONTSIZE = int(round(12 * 1.3))  # ~30% larger
+LEGEND_FONTSIZE = int(round(10 * 1.4))  # ~40% larger (was 10)
+PLOT_DATA_DUMP = True
+
+# Gate optional algorithms/series in plots & runs.
+INCLUDE_DISTANCE_TWO = False
+
+# Ensure consistent colors across scripts/plots.
+# Keep these aligned with `sparse_hessian_benchmark.py`.
+COLORS = {
+    "naive": "red",
+    "star": "blue",
+    "acyclic": "green",
+    "distance_two": "purple",
+}
+
 # Load model and structure
 pot = matgl.load_model("../pretrained_models/TensorNet-ANI-1x-Subset-PES")
 pot.calc_hessian = True
@@ -97,13 +115,16 @@ vib_basis = get_vibrational_basis_from_eckart(atoms)
 
 # Cutoffs to test
 cutoffs = np.arange(5, 13, 1)  # 5 to 12 Angstroms
-algorithms = ["distance_two", "star", "acyclic"]
+algorithms = ["star", "acyclic"]
+if INCLUDE_DISTANCE_TWO:
+    algorithms = ["distance_two", *algorithms]
 
 # Storage for results
 errors = {alg: [] for alg in algorithms}
 n_hvps = {alg: [] for alg in algorithms}
 hessians = {alg: [] for alg in algorithms}  # Store hessians for eigenvalue comparison
 first_n_eigvals = 10  # Parameter for eigenvalue comparison
+included_full_case = {alg: False for alg in algorithms}
 
 # Loop through cutoffs
 for cutoff in cutoffs:
@@ -122,11 +143,11 @@ for cutoff in cutoffs:
             # Get number of HVPs (second dimension of seed matrix)
             n_hvp = seed_matrix.shape[1] if len(seed_matrix.shape) == 2 else seed_matrix.shape[0]
             
-            # Filter out runs that are effectively full-Hessian calculations.
-            # In these cases, eigenvalue errors can collapse to exact zero.
-            if n_hvp >= full_hessian_rows:
+            # Full-Hessian (or overcomplete) cases can collapse error to exact zero.
+            # Keep exactly one such datapoint per algorithm to show the limiting behavior.
+            if n_hvp >= full_hessian_rows and included_full_case[alg]:
                 print(
-                    f"    Skipping from plots: HVPs ({n_hvp}) >= full Hessian rows ({full_hessian_rows})"
+                    f"    Skipping extra full-Hessian case: HVPs ({n_hvp}) >= rows ({full_hessian_rows})"
                 )
                 errors[alg].append(np.nan)
                 n_hvps[alg].append(np.nan)
@@ -140,6 +161,8 @@ for cutoff in cutoffs:
             max_error = np.abs(hessian_naive - hessian_sparse).max()
             errors[alg].append(max_error)
             n_hvps[alg].append(n_hvp)
+            if n_hvp >= full_hessian_rows:
+                included_full_case[alg] = True
             
             print(f"    Max error: {max_error:.6e}, Number of HVPs: {n_hvp}")
             
@@ -158,6 +181,7 @@ os.makedirs(output_dir, exist_ok=True)
 # Compute eigenvalue differences
 eigenval_errors = {alg: [] for alg in algorithms}
 eigenval_errors_all = {alg: [] for alg in algorithms}
+EIGENVAL_ERROR_PLOT_EPS = 1e-7
 eigvals_naive_proj_sorted = np.sort(projected_vibrational_eigvals(hessian_naive, masses, vib_basis))
 eigvals_naive_first_sorted = eigvals_naive_proj_sorted[:first_n_eigvals]
 
@@ -180,11 +204,11 @@ for i, cutoff in enumerate(cutoffs):
                 pct_diff = np.abs(eigvals_naive_first_sorted - eigvals_sparse_first_sorted) / (
                     np.abs(eigvals_naive_first_sorted) + 1e-5
                 )
-                eigenval_errors[alg].append(pct_diff.mean())
+                eigenval_errors[alg].append(pct_diff.mean() + EIGENVAL_ERROR_PLOT_EPS)
                 pct_diff_all = np.abs(eigvals_naive_proj_sorted - eigvals_sparse_proj_sorted) / (
                     np.abs(eigvals_naive_proj_sorted) + FULL_SPECTRUM_REG_EPS
                 )
-                eigenval_errors_all[alg].append(pct_diff_all.mean())
+                eigenval_errors_all[alg].append(pct_diff_all.mean() + EIGENVAL_ERROR_PLOT_EPS)
                 per_eig_errors_all[alg][i, :] = pct_diff_all
             except Exception as e:
                 print(f"    Warning: Could not compute eigenvalues for {alg} at cutoff {cutoff}: {e}")
@@ -208,11 +232,19 @@ plt.figure(figsize=(10, 6))
 for alg in algorithms:
     valid_cutoffs, valid_errors = get_valid_xy(cutoffs, errors[alg], require_positive_y=True)
     if valid_errors.size > 0:
-        plt.plot(valid_cutoffs, valid_errors, marker='o', label=alg.replace('_', ' ').title(), linewidth=2, markersize=6)
+        plt.plot(
+            valid_cutoffs,
+            valid_errors,
+            marker="o",
+            color=COLORS.get(alg),
+            label=alg.replace("_", " ").title(),
+            linewidth=2,
+            markersize=6,
+        )
 
-plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
-plt.ylabel('Max Absolute Error vs Naive', fontsize=12)
-plt.legend(fontsize=10)
+plt.xlabel('Cutoff Radius (Angstroms)', fontsize=LABEL_FONTSIZE)
+plt.ylabel('Max Absolute Error vs Naive', fontsize=LABEL_FONTSIZE)
+plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
@@ -226,10 +258,18 @@ plt.figure(figsize=(10, 6))
 for alg in algorithms:
     valid_cutoffs, valid_hvps = get_valid_xy(cutoffs, n_hvps[alg], require_positive_y=False)
     if valid_hvps.size > 0:
-        plt.plot(valid_cutoffs, valid_hvps, marker='s', label=alg.replace('_', ' ').title(), linewidth=2, markersize=6)
+        plt.plot(
+            valid_cutoffs,
+            valid_hvps,
+            marker="s",
+            color=COLORS.get(alg),
+            label=alg.replace("_", " ").title(),
+            linewidth=2,
+            markersize=6,
+        )
 
-plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
-plt.ylabel('Number of Hessian-Vector Products', fontsize=12)
+plt.xlabel('Cutoff Radius (Angstroms)', fontsize=LABEL_FONTSIZE)
+plt.ylabel('Number of Hessian-Vector Products', fontsize=LABEL_FONTSIZE)
 plt.axhline(
     y=full_hessian_rows,
     color='red',
@@ -237,7 +277,7 @@ plt.axhline(
     linewidth=2,
     label='Full hessian',
 )
-plt.legend(fontsize=10)
+plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
 hvp_plot_path = f"{output_dir}/cutoff_hvp_comparison_{timestamp}.png"
@@ -250,11 +290,19 @@ plt.figure(figsize=(10, 6))
 for alg in algorithms:
     valid_cutoffs, valid_eigenval_errors = get_valid_xy(cutoffs, eigenval_errors[alg], require_positive_y=True)
     if valid_eigenval_errors.size > 0:
-        plt.plot(valid_cutoffs, valid_eigenval_errors, marker='^', label=alg.replace('_', ' ').title(), linewidth=2, markersize=6)
+        plt.plot(
+            valid_cutoffs,
+            valid_eigenval_errors,
+            marker="^",
+            color=COLORS.get(alg),
+            label=alg.replace("_", " ").title(),
+            linewidth=2,
+            markersize=6,
+        )
 
-plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
-plt.ylabel(f'Average Relative Error (First {first_n_eigvals} Eigenvalues)', fontsize=12)
-plt.legend(fontsize=10)
+plt.xlabel('Cutoff Radius (Angstroms)', fontsize=LABEL_FONTSIZE)
+plt.ylabel(f'Average Relative Error (First {first_n_eigvals} Eigenvalues)', fontsize=LABEL_FONTSIZE)
+plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
@@ -272,14 +320,15 @@ for alg in algorithms:
             valid_cutoffs,
             valid_eigenval_errors_all,
             marker='d',
+            color=COLORS.get(alg),
             label=alg.replace('_', ' ').title(),
             linewidth=2,
             markersize=6,
         )
 
-plt.xlabel('Cutoff Radius (Angstroms)', fontsize=12)
-plt.ylabel('Average Relative Error (All Eigenvalues)', fontsize=12)
-plt.legend(fontsize=10)
+plt.xlabel('Cutoff Radius (Angstroms)', fontsize=LABEL_FONTSIZE)
+plt.ylabel('Average Relative Error (All Eigenvalues)', fontsize=LABEL_FONTSIZE)
+plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
@@ -293,10 +342,18 @@ plt.figure(figsize=(10, 6))
 for alg in algorithms:
     valid_hvps, valid_errors = get_valid_xy(n_hvps[alg], errors[alg], require_positive_y=True)
     if valid_errors.size > 0:
-        plt.plot(valid_hvps, valid_errors, marker='o', label=alg.replace('_', ' ').title(), linewidth=2, markersize=6)
+        plt.plot(
+            valid_hvps,
+            valid_errors,
+            marker="o",
+            color=COLORS.get(alg),
+            label=alg.replace("_", " ").title(),
+            linewidth=2,
+            markersize=6,
+        )
 
-plt.xlabel('Number of Hessian-Vector Products', fontsize=12)
-plt.ylabel('Max Absolute Error vs Naive', fontsize=12)
+plt.xlabel('Number of Hessian-Vector Products', fontsize=LABEL_FONTSIZE)
+plt.ylabel('Max Absolute Error vs Naive', fontsize=LABEL_FONTSIZE)
 plt.axvline(
     x=full_hessian_rows,
     color='red',
@@ -304,7 +361,7 @@ plt.axvline(
     linewidth=2,
     label='Full hessian',
 )
-plt.legend(fontsize=10)
+plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
@@ -318,10 +375,18 @@ plt.figure(figsize=(10, 6))
 for alg in algorithms:
     valid_hvps, valid_eigenval_errors = get_valid_xy(n_hvps[alg], eigenval_errors[alg], require_positive_y=True)
     if valid_eigenval_errors.size > 0:
-        plt.plot(valid_hvps, valid_eigenval_errors, marker='^', label=alg.replace('_', ' ').title(), linewidth=2, markersize=6)
+        plt.plot(
+            valid_hvps,
+            valid_eigenval_errors,
+            marker="^",
+            color=COLORS.get(alg),
+            label=alg.replace("_", " ").title(),
+            linewidth=2,
+            markersize=6,
+        )
 
-plt.xlabel('Number of Hessian-Vector Products', fontsize=12)
-plt.ylabel(f'Average Relative Error (First {first_n_eigvals} Eigenvalues)', fontsize=12)
+plt.xlabel('Number of Hessian-Vector Products', fontsize=LABEL_FONTSIZE)
+plt.ylabel(f'Average Relative Error (First {first_n_eigvals} Eigenvalues)', fontsize=LABEL_FONTSIZE)
 plt.axvline(
     x=full_hessian_rows,
     color='red',
@@ -329,7 +394,7 @@ plt.axvline(
     linewidth=2,
     label='Full hessian',
 )
-plt.legend(fontsize=10)
+plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
@@ -347,13 +412,14 @@ for alg in algorithms:
             valid_hvps,
             valid_eigenval_errors_all,
             marker='d',
+            color=COLORS.get(alg),
             label=alg.replace('_', ' ').title(),
             linewidth=2,
             markersize=6,
         )
 
-plt.xlabel('Number of Hessian-Vector Products', fontsize=12)
-plt.ylabel('Average Relative Error (All Eigenvalues)', fontsize=12)
+plt.xlabel('Number of Hessian-Vector Products', fontsize=LABEL_FONTSIZE)
+plt.ylabel('Average Relative Error (All Eigenvalues)', fontsize=LABEL_FONTSIZE)
 plt.axvline(
     x=full_hessian_rows,
     color='red',
@@ -361,7 +427,7 @@ plt.axvline(
     linewidth=2,
     label='Full hessian',
 )
-plt.legend(fontsize=10)
+plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
@@ -411,8 +477,8 @@ for col_idx, alg in enumerate(algorithms):
     ax_top.set_ylim(0.0, top_cap * 1.05)
     ax_top.grid(True, alpha=0.3, axis='y')
     if col_idx == 0:
-        ax_top.set_ylabel('Eigenvalue % Error', fontsize=11)
-    ax_top.set_xlabel('Eigenvalue Index', fontsize=10)
+        ax_top.set_ylabel('Eigenvalue % Error', fontsize=LABEL_FONTSIZE)
+    ax_top.set_xlabel('Eigenvalue Index', fontsize=LABEL_FONTSIZE)
 
     eig_span = float(np.max(eigvals_naive_proj_sorted) - np.min(eigvals_naive_proj_sorted))
     bar_width = eig_span / max(len(eigvals_naive_proj_sorted) * 1.5, 1)
@@ -430,8 +496,8 @@ for col_idx, alg in enumerate(algorithms):
     ax_bottom.set_ylim(0.0, top_cap * 1.05)
     ax_bottom.grid(True, alpha=0.3, axis='y')
     if col_idx == 0:
-        ax_bottom.set_ylabel('Eigenvalue % Error', fontsize=11)
-    ax_bottom.set_xlabel('Ground-Truth Eigenvalue', fontsize=10)
+        ax_bottom.set_ylabel('Eigenvalue % Error', fontsize=LABEL_FONTSIZE)
+    ax_bottom.set_xlabel('Ground-Truth Eigenvalue', fontsize=LABEL_FONTSIZE)
 
 plt.tight_layout(rect=[0, 0, 1, 0.96])
 per_eigen_plot_path = f"{output_dir}/per_eigenvalue_error_bars_{timestamp}.png"
@@ -441,35 +507,69 @@ print(f"Saved per-eigenvalue error bar plot to: {per_eigen_plot_path}")
 
 # Save raw data used in plots for debugging without rerunning.
 debug_data_path = f"{output_dir}/cutoff_debug_data_{timestamp}.npz"
-np.savez_compressed(
-    debug_data_path,
-    cutoffs=np.asarray(cutoffs, dtype=float),
-    full_hessian_rows=np.asarray([full_hessian_rows], dtype=int),
-    eigvals_naive_eckart_projected_sorted=np.asarray(eigvals_naive_proj_sorted, dtype=float),
-    errors_distance_two=np.asarray(errors["distance_two"], dtype=float),
-    errors_star=np.asarray(errors["star"], dtype=float),
-    errors_acyclic=np.asarray(errors["acyclic"], dtype=float),
-    n_hvps_distance_two=np.asarray(n_hvps["distance_two"], dtype=float),
-    n_hvps_star=np.asarray(n_hvps["star"], dtype=float),
-    n_hvps_acyclic=np.asarray(n_hvps["acyclic"], dtype=float),
-    eigenval_errors_first10_distance_two=np.asarray(eigenval_errors["distance_two"], dtype=float),
-    eigenval_errors_first10_star=np.asarray(eigenval_errors["star"], dtype=float),
-    eigenval_errors_first10_acyclic=np.asarray(eigenval_errors["acyclic"], dtype=float),
-    eigenval_errors_all_distance_two=np.asarray(eigenval_errors_all["distance_two"], dtype=float),
-    eigenval_errors_all_star=np.asarray(eigenval_errors_all["star"], dtype=float),
-    eigenval_errors_all_acyclic=np.asarray(eigenval_errors_all["acyclic"], dtype=float),
-    per_eig_errors_all_distance_two=per_eig_errors_all["distance_two"],
-    per_eig_errors_all_star=per_eig_errors_all["star"],
-    per_eig_errors_all_acyclic=per_eig_errors_all["acyclic"],
-)
+debug_payload = {
+    "cutoffs": np.asarray(cutoffs, dtype=float),
+    "full_hessian_rows": np.asarray([full_hessian_rows], dtype=int),
+    "eigvals_naive_eckart_projected_sorted": np.asarray(eigvals_naive_proj_sorted, dtype=float),
+    "errors_star": np.asarray(errors["star"], dtype=float),
+    "errors_acyclic": np.asarray(errors["acyclic"], dtype=float),
+    "n_hvps_star": np.asarray(n_hvps["star"], dtype=float),
+    "n_hvps_acyclic": np.asarray(n_hvps["acyclic"], dtype=float),
+    "eigenval_errors_first10_star": np.asarray(eigenval_errors["star"], dtype=float),
+    "eigenval_errors_first10_acyclic": np.asarray(eigenval_errors["acyclic"], dtype=float),
+    "eigenval_errors_all_star": np.asarray(eigenval_errors_all["star"], dtype=float),
+    "eigenval_errors_all_acyclic": np.asarray(eigenval_errors_all["acyclic"], dtype=float),
+    "per_eig_errors_all_star": per_eig_errors_all["star"],
+    "per_eig_errors_all_acyclic": per_eig_errors_all["acyclic"],
+}
+if INCLUDE_DISTANCE_TWO:
+    debug_payload.update(
+        {
+            "errors_distance_two": np.asarray(errors["distance_two"], dtype=float),
+            "n_hvps_distance_two": np.asarray(n_hvps["distance_two"], dtype=float),
+            "eigenval_errors_first10_distance_two": np.asarray(eigenval_errors["distance_two"], dtype=float),
+            "eigenval_errors_all_distance_two": np.asarray(eigenval_errors_all["distance_two"], dtype=float),
+            "per_eig_errors_all_distance_two": per_eig_errors_all["distance_two"],
+        }
+    )
+np.savez_compressed(debug_data_path, **debug_payload)
 print(f"Saved debug data to: {debug_data_path}")
+
+# Save a single consolidated payload containing all plot series.
+if PLOT_DATA_DUMP:
+    plot_series_path = f"{output_dir}/cutoff_plot_series_{timestamp}.npz"
+    series_payload = {
+        "timestamp": np.asarray([timestamp], dtype=object),
+        "cutoffs": np.asarray(cutoffs, dtype=float),
+        "algorithms": np.asarray(algorithms, dtype=object),
+        "include_distance_two": np.asarray([INCLUDE_DISTANCE_TWO], dtype=bool),
+        "full_hessian_rows": np.asarray([full_hessian_rows], dtype=int),
+        "label_fontsize": np.asarray([LABEL_FONTSIZE], dtype=int),
+        "legend_fontsize": np.asarray([LEGEND_FONTSIZE], dtype=int),
+        "colors_naive": np.asarray([COLORS["naive"]], dtype=object),
+        "colors_star": np.asarray([COLORS["star"]], dtype=object),
+        "colors_acyclic": np.asarray([COLORS["acyclic"]], dtype=object),
+    }
+    for alg in algorithms:
+        series_payload[f"errors_{alg}"] = np.asarray(errors[alg], dtype=float)
+        series_payload[f"n_hvps_{alg}"] = np.asarray(n_hvps[alg], dtype=float)
+        series_payload[f"eigenval_errors_first{first_n_eigvals}_{alg}"] = np.asarray(eigenval_errors[alg], dtype=float)
+        series_payload[f"eigenval_errors_all_{alg}"] = np.asarray(eigenval_errors_all[alg], dtype=float)
+        series_payload[f"per_eig_errors_all_{alg}"] = np.asarray(per_eig_errors_all[alg], dtype=float)
+        series_payload[f"color_{alg}"] = np.asarray([COLORS.get(alg)], dtype=object)
+    np.savez_compressed(plot_series_path, **series_payload)
+    print(f"Saved plot series to: {plot_series_path}")
 
 # Print summary
 print("\n" + "="*60)
 print("Summary:")
 print("="*60)
-print(f"{'Cutoff':<8} {'Distance Two':<20} {'Star':<20} {'Acyclic':<20}")
-print(f"{'':<8} {'Error':<10} {'HVPs':<10} {'Error':<10} {'HVPs':<10} {'Error':<10} {'HVPs':<10}")
+header = ["Cutoff"]
+for alg in algorithms:
+    header.append(alg.replace("_", " ").title())
+print(" ".join([f"{h:<20}" if i else f"{h:<8}" for i, h in enumerate(header)]))
+sub = ["", *["Error     HVPs     " for _ in algorithms]]
+print(" ".join([f"{s:<20}" if i else f"{s:<8}" for i, s in enumerate(sub)]))
 print("-"*60)
 for i, cutoff in enumerate(cutoffs):
     print(f"{cutoff:<8.1f}", end="")

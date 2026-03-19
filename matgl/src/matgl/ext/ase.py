@@ -212,8 +212,18 @@ class PESCalculator(Calculator):
             )
             self.results.update(stress=stresses_np * self.stress_weight)
         if self.compute_hessian:
+            # Ensure all CUDA streams finish before .cpu(); .cpu() usually waits for this
+            # tensor's deps, but explicit sync avoids rare multi-stream edge cases.
+            import torch
+
+            _h = calc_result[3][0] if self.return_seed_matrix else calc_result[3]
+            if isinstance(_h, torch.Tensor) and _h.is_cuda:
+                torch.cuda.synchronize(_h.device)
             if self.return_seed_matrix:
-                self.results.update(hessian=calc_result[3][0].detach().cpu().numpy(), seed_matrix=calc_result[3][1].detach().cpu().numpy())
+                self.results.update(
+                    hessian=calc_result[3][0].detach().cpu().numpy(),
+                    seed_matrix=calc_result[3][1].detach().cpu().numpy(),
+                )
             else:
                 self.results.update(hessian=calc_result[3].detach().cpu().numpy())
         if self.compute_magmom:

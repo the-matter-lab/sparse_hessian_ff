@@ -14,6 +14,12 @@ import matplotlib.pyplot as plt
 import time
 from datetime import datetime
 
+# Plot styling (paper readability)
+# Historically, axis labels used fontsize=14 in this script.
+LABEL_FONTSIZE = int(round(14 * 1.3))  # ~30% larger
+LEGEND_FONTSIZE = int(round(12 * 1.4))  # ~40% larger (was 12)
+CBAR_LABEL_FONTSIZE = LABEL_FONTSIZE  # keep consistent for paper readability
+
 
 class HessianBenchmark:
     """Comprehensive benchmarking class for Hessian calculation methods with GPU warm-up."""
@@ -57,10 +63,11 @@ class HessianBenchmark:
         
         for _ in range(n_repeats):
             torch.cuda.synchronize()  # Ensure previous operations complete
-            start_time = time.time()
+            t0 = time.perf_counter()
             self.calc.calculate(atoms, properties=['hessian'])
             torch.cuda.synchronize()  # Ensure calculation completes
-            end_time = time.time()
+            t1 = time.perf_counter()
+            start_time, end_time = t0, t1  # perf_counter monotonic, better than time.time()
             times.append(end_time - start_time)
         
         avg_time = np.mean(times)
@@ -92,8 +99,18 @@ class HessianBenchmark:
             'n_atoms': len(atoms)
         }
     
-    def benchmark_directory(self, data_dir, output_dir="sparse_hessian_results", n_repeats=1):
-        """Benchmark all xyz files in a directory, with optional test_over_conformations."""
+    def benchmark_directory(
+        self,
+        data_dir,
+        output_dir="sparse_hessian_results",
+        n_repeats=1,
+        reverse_file_order: bool = False,
+    ):
+        """Benchmark all xyz files in a directory, with optional test_over_conformations.
+
+        reverse_file_order: process files in reverse order (after sorting). Use with
+        test_over_conformations to check GPU thermal / ordering bias on timings.
+        """
         data_path = Path(data_dir)
         output_path = Path(output_dir)
         if not output_path.is_absolute():
@@ -112,24 +129,31 @@ class HessianBenchmark:
             file_atom_counts.append((file_path, len(atoms)))
         
         if self.test_over_conformations:
-            # For conformations, just use the files as they are (all same atom count)
+            # Same atom count: stable order by filename so forward/reverse is reproducible
+            file_atom_counts.sort(key=lambda x: x[0].name)
             sorted_files = [item[0] for item in file_atom_counts]
         else:
             # Sort by atom count
             file_atom_counts.sort(key=lambda x: x[1])
             sorted_files = [item[0] for item in file_atom_counts]
-        
+
+        if reverse_file_order:
+            sorted_files = list(reversed(sorted_files))
+            print("Processing order: REVERSED (last filename first)")
+
         print(f"Found {len(sorted_files)} xyz files in {data_dir}")
-        print("Files sorted by atom count:")
-        for file_path, n_atoms in file_atom_counts:
+        print("Benchmark processing order:")
+        for file_path in sorted_files:
+            n_atoms = next(n for p, n in file_atom_counts if p == file_path)
             print(f"  {file_path.name}: {n_atoms} atoms")
         
         # Store results
         all_results = []
+        # Fastest/slowest by acyclic HVP count (same algorithm, different systems)
         slowest_hessian = None
         fastest_hessian = None
-        slowest_time = -1
-        fastest_time = float('inf')
+        slowest_hvp = -1
+        fastest_hvp = float('inf')
         slowest_file = ""
         fastest_file = ""
         
@@ -157,16 +181,6 @@ class HessianBenchmark:
                         result = self.benchmark_method(atoms, method, n_repeats)
                         file_results['methods'][method] = result
                         
-                        # Check for slowest and fastest
-                        if result['time'] > slowest_time:
-                            slowest_time = result['time']
-                            slowest_hessian = result['hessian']
-                            slowest_file = file_path.name
-                        if result['time'] < fastest_time:
-                            fastest_time = result['time']
-                            fastest_hessian = result['hessian']
-                            fastest_file = file_path.name
-                        
                         # Show individual run times for transparency
                         times_str = ", ".join([f"{t:.3f}s" for t in result['times']])
                         print(f"    Times: [{times_str}]")
@@ -177,20 +191,33 @@ class HessianBenchmark:
                         print(f"    Error with {method}: {e}")
                         file_results['methods'][method] = None
                 
+                # Update fastest/slowest by acyclic HVP count (use acyclic Hessian for both)
+                acyclic_result = file_results['methods'].get('acyclic')
+                if acyclic_result is not None:
+                    hvp = acyclic_result['hvp_count']
+                    if hvp > slowest_hvp:
+                        slowest_hvp = hvp
+                        slowest_hessian = acyclic_result['hessian']
+                        slowest_file = file_path.name
+                    if hvp < fastest_hvp:
+                        fastest_hvp = hvp
+                        fastest_hessian = acyclic_result['hessian']
+                        fastest_file = file_path.name
+                
                 all_results.append(file_results)
                 
             except Exception as e:
                 print(f"  Error processing {file_path.name}: {e}")
                 continue
         
-        # Create plots of Hessians and sparsity patterns
+        # Create plots of Hessians and sparsity patterns (by acyclic HVP: slowest=most HVPs, fastest=least HVPs)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         if slowest_hessian is not None:
             self.plot_hessian_matrix(slowest_hessian, output_path, f"slowest_{slowest_file}", timestamp)
-            print(f"Slowest Hessian plots saved for {slowest_file}")
+            print(f"Slowest (acyclic HVPs={slowest_hvp}) Hessian plots saved for {slowest_file}")
         if fastest_hessian is not None:
             self.plot_hessian_matrix(fastest_hessian, output_path, f"fastest_{fastest_file}", timestamp)
-            print(f"Fastest Hessian plots saved for {fastest_file}")
+            print(f"Fastest (acyclic HVPs={fastest_hvp}) Hessian plots saved for {fastest_file}")
         
         # Save results and create plots
         self.save_results_and_plots(all_results, output_path, data_path.name)
@@ -208,9 +235,10 @@ class HessianBenchmark:
         # Plot the full Hessian matrix
         plt.figure(figsize=(12, 10))
         plt.imshow(hessian, cmap='RdBu_r', aspect='equal')
-        plt.colorbar(label='Hessian Value')
-        plt.xlabel('DOF Index')
-        plt.ylabel('DOF Index')
+        cbar = plt.colorbar()
+        cbar.set_label("Hessian Value", fontsize=CBAR_LABEL_FONTSIZE)
+        plt.xlabel('DOF Index', fontsize=LABEL_FONTSIZE)
+        plt.ylabel('DOF Index', fontsize=LABEL_FONTSIZE)
         
         hessian_plot_file = output_path / f"hessian_matrix_{file_identifier}_{timestamp}.png"
         plt.savefig(hessian_plot_file, dpi=300, bbox_inches='tight')
@@ -221,15 +249,26 @@ class HessianBenchmark:
         sparse_cmap = ListedColormap(["white", "black"])
         sparse_norm = BoundaryNorm([-0.5, 0.5, 1.5], sparse_cmap.N)
         sparse_img = plt.imshow(sparsity_pattern.astype(int), cmap=sparse_cmap, norm=sparse_norm, aspect='equal')
-        plt.xlabel('DOF Index')
-        plt.ylabel('DOF Index')
+        plt.xlabel('DOF Index', fontsize=LABEL_FONTSIZE)
+        plt.ylabel('DOF Index', fontsize=LABEL_FONTSIZE)
         cbar = plt.colorbar(sparse_img, ticks=[0, 1])
         cbar.ax.set_yticklabels(["0", "1"])
-        cbar.set_label("Sparsity Entry")
+        cbar.set_label("Sparsity Entry", fontsize=CBAR_LABEL_FONTSIZE)
         
         sparsity_plot_file = output_path / f"sparsity_pattern_{file_identifier}_{timestamp}.png"
         plt.savefig(sparsity_plot_file, dpi=300, bbox_inches='tight')
         plt.close()
+
+        # Save the underlying arrays for design iteration.
+        data_file = output_path / f"sparsity_pattern_data_{file_identifier}_{timestamp}.npz"
+        np.savez_compressed(
+            data_file,
+            hessian=np.asarray(hessian),
+            sparsity_pattern=np.asarray(sparsity_pattern, dtype=bool),
+            label_fontsize=np.asarray([LABEL_FONTSIZE], dtype=int),
+            legend_fontsize=np.asarray([LEGEND_FONTSIZE], dtype=int),
+            cbar_label_fontsize=np.asarray([CBAR_LABEL_FONTSIZE], dtype=int),
+        )
         
         print(f"  Hessian matrix: {hessian_plot_file}")
         print(f"  Sparsity pattern: {sparsity_plot_file}")
@@ -238,7 +277,9 @@ class HessianBenchmark:
         """Create bar plots for conformations with timings/HVPs on the y-axis."""
         colors = {'naive': 'red', 'star': 'blue', 'acyclic': 'green'}
         
-        # Sort results by average runtime across all methods
+        # Sort results by average runtime across all methods (leftmost bar = fastest overall).
+        # Note: bar order is NOT execution order; naive times can differ slightly due to
+        # GPU thermal state or variance when n_repeats is small.
         def get_avg_runtime(file_result):
             times = []
             for method in self.methods:
@@ -276,9 +317,9 @@ class HessianBenchmark:
                 plt.bar(x + i * bar_width, method_times[method], bar_width,
                         label=method.capitalize(), color=colors[method])
         
-        plt.ylabel('Time (seconds)', fontsize=14)
+        plt.ylabel('Time (seconds)', fontsize=LABEL_FONTSIZE)
         plt.xticks(x + bar_width, conformation_names, rotation=45, fontsize=14)
-        plt.legend(fontsize=12)
+        plt.legend(fontsize=LEGEND_FONTSIZE)
         plt.grid(True, alpha=0.3, axis='y')
         plt.tight_layout()
         
@@ -295,15 +336,27 @@ class HessianBenchmark:
                 plt.bar(x + i * bar_width, method_hvps[method], bar_width,
                         label=method.capitalize(), color=colors[method])
         
-        plt.ylabel('Number of HVPs', fontsize=14)
+        plt.ylabel('Number of HVPs', fontsize=LABEL_FONTSIZE)
         plt.xticks(x + bar_width, conformation_names, rotation=45, fontsize=14)
-        plt.legend(fontsize=12)
+        plt.legend(fontsize=LEGEND_FONTSIZE)
         plt.grid(True, alpha=0.3, axis='y')
         plt.tight_layout()
         
         hvp_bar_plot_file = output_path / f"{dataset_name}_conformation_hvp_bars_{timestamp}.png"
         plt.savefig(hvp_bar_plot_file, dpi=300, bbox_inches='tight')
         plt.close()
+
+        # Save series used by both conformation plots.
+        data_file = output_path / f"{dataset_name}_conformation_plot_data_{timestamp}.npz"
+        np.savez_compressed(
+            data_file,
+            conformation_names=np.asarray(conformation_names, dtype=object),
+            methods=np.asarray(self.methods, dtype=object),
+            times=np.asarray([method_times[m] for m in self.methods], dtype=float),
+            hvps=np.asarray([method_hvps[m] for m in self.methods], dtype=float),
+            label_fontsize=np.asarray([LABEL_FONTSIZE], dtype=int),
+            legend_fontsize=np.asarray([LEGEND_FONTSIZE], dtype=int),
+        )
         
         print(f"Bar plots saved:")
         print(f"  Timing: {timing_bar_plot_file}")
@@ -377,9 +430,9 @@ class HessianBenchmark:
                         color=colors[method], marker=markers[method], 
                         linewidth=2, markersize=8, label=method.capitalize())
         
-        plt.xlabel('Number of Atoms', fontsize=14)
-        plt.ylabel('Number of HVPs', fontsize=14)
-        plt.legend(fontsize=12)
+        plt.xlabel('Number of Atoms', fontsize=LABEL_FONTSIZE)
+        plt.ylabel('Number of HVPs', fontsize=LABEL_FONTSIZE)
+        plt.legend(fontsize=LEGEND_FONTSIZE)
         plt.grid(True, alpha=0.3)
         # Use linear scale to better show differences between methods
         
@@ -399,15 +452,29 @@ class HessianBenchmark:
                            linewidth=2, markersize=8, label=method.capitalize(),
                            capsize=5, capthick=2)
         
-        plt.xlabel('Number of Atoms', fontsize=14)
-        plt.ylabel('Wall Clock Time (seconds)', fontsize=14)
-        plt.legend(fontsize=12)
+        plt.xlabel('Number of Atoms', fontsize=LABEL_FONTSIZE)
+        plt.ylabel('Wall Clock Time (seconds)', fontsize=LABEL_FONTSIZE)
+        plt.legend(fontsize=LEGEND_FONTSIZE)
         plt.grid(True, alpha=0.3)
         # Use linear scale to better show differences between methods
         
         timing_plot_file = output_path / f"{dataset_name}_timing_comparison_{timestamp}.png"
         plt.savefig(timing_plot_file, dpi=300, bbox_inches='tight')
         plt.close()
+
+        # Save the series used by the HVP and timing plots.
+        data_file = output_path / f"{dataset_name}_plot_data_{timestamp}.npz"
+        payload = {
+            "methods": np.asarray(self.methods, dtype=object),
+            "label_fontsize": np.asarray([LABEL_FONTSIZE], dtype=int),
+            "legend_fontsize": np.asarray([LEGEND_FONTSIZE], dtype=int),
+        }
+        for method in self.methods:
+            payload[f"n_atoms_{method}"] = np.asarray(plot_data[method]["n_atoms"], dtype=int)
+            payload[f"hvp_counts_{method}"] = np.asarray(plot_data[method]["hvp_counts"], dtype=float)
+            payload[f"times_{method}"] = np.asarray(plot_data[method]["times"], dtype=float)
+            payload[f"time_stds_{method}"] = np.asarray(plot_data[method]["time_stds"], dtype=float)
+        np.savez_compressed(data_file, **payload)
         
         print(f"Plots saved:")
         print(f"  HVP comparison: {hvp_plot_file}")
@@ -444,32 +511,119 @@ class HessianBenchmark:
 
 def main():
     """Main function to run benchmarks."""
-    # Configuration
-    DATA_DIR = "/h/28/lucahiede/Projects/sparse_hessian_ff/data/Chignolin"
-    OUTPUT_DIR = str(Path(__file__).resolve().parent / "sparse_hessian_results")
-    
+    import argparse
+
+    script_dir = Path(__file__).resolve().parent
+    repo_root = script_dir.parent.parent
+    results_root = script_dir / "sparse_hessian_results"
+
+    parser = argparse.ArgumentParser(description="Sparse Hessian benchmark suite")
+    parser.add_argument(
+        "--chignolin",
+        action="store_true",
+        help="Run Chignolin conformation benchmark only (data/Chignolin)",
+    )
+    parser.add_argument(
+        "--reverse-order",
+        action="store_true",
+        help="Process xyz files in reverse order (after sort); for ordering-bias checks",
+    )
+    parser.add_argument(
+        "--stability-xyz",
+        metavar="PATH",
+        default=None,
+        help="Run naive Hessian timing N times on one .xyz (after warmup); for outlier checks",
+    )
+    parser.add_argument(
+        "--stability-repeats",
+        type=int,
+        default=3,
+        help="Repeats for --stability-xyz (default: 3)",
+    )
+    parser.add_argument(
+        "--n-repeats",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Timed runs per method per structure (default: 1)",
+    )
+    args = parser.parse_args()
+
+    if args.stability_xyz:
+        xyz = Path(args.stability_xyz)
+        if not xyz.is_file():
+            raise SystemExit(f"Not a file: {xyz}")
+        print("Naive Hessian stability test (sync before/after calculate; hessian .cpu() + extra sync in PESCalculator)")
+        print(f"  {xyz}  x {args.stability_repeats} repeats\n")
+        bench = HessianBenchmark(test_over_conformations=True)
+        atoms = bench.get_atoms_from_file(xyz)
+        bench.warmup_gpu(atoms)
+        bench.pot.hessian_algorithm = "naive"
+        times = []
+        for i in range(args.stability_repeats):
+            torch.cuda.synchronize()
+            t0 = time.perf_counter()
+            bench.calc.calculate(atoms, properties=["hessian"])
+            torch.cuda.synchronize()
+            t1 = time.perf_counter()
+            dt = t1 - t0
+            times.append(dt)
+            H = bench.calc.results["hessian"]
+            print(f"  run {i + 1:2d}: {dt:.4f} s  |H|_max={np.abs(H).max():.6e}")
+        arr = np.asarray(times)
+        print(
+            f"\n  min={arr.min():.4f}s  max={arr.max():.4f}s  "
+            f"mean={arr.mean():.4f}s  std={arr.std():.4f}s  "
+            f"range%={(arr.max() - arr.min()) / arr.mean() * 100:.1f}% of mean"
+        )
+        return
+
+    if args.chignolin:
+        runs = [
+            {
+                "name": "Chignolin",
+                "data_dir": str(repo_root / "data" / "Chignolin"),
+                "output_dir": str(results_root / "chignolin_experiments"),
+                "test_over_conformations": True,
+                "reverse_file_order": args.reverse_order,
+            },
+        ]
+    else:
+        runs = [
+            {
+                "name": "Alkanes",
+                "data_dir": str(repo_root / "data" / "Alkanes"),
+                "output_dir": str(results_root / "alkanes_experiments"),
+                "test_over_conformations": False,
+                "reverse_file_order": False,
+            },
+        ]
+
     print("Starting Hessian Benchmark Suite (with GPU warm-up)")
     print("=" * 60)
-    print(f"Data directory: {DATA_DIR}")
-    print(f"Output directory: {OUTPUT_DIR}")
     print("Note: Each system will be warmed up before benchmarking")
-    
-    # Initialize benchmark with test_over_conformations=True for Chignolin
-    benchmark = HessianBenchmark(test_over_conformations=True)
-    
-    # Run benchmarks
-    try:
-        results = benchmark.benchmark_directory(
-            data_dir=DATA_DIR,
-            output_dir=OUTPUT_DIR,
-            n_repeats=1  # Number of timing repeats for accuracy (increase for better statistics)
-        )
-        
-        print("\nBenchmark completed successfully!")
-        
-    except Exception as e:
-        print(f"Benchmark failed: {e}")
-        raise
+
+    for run in runs:
+        print("\n" + "-" * 60)
+        print(f"Dataset: {run['name']}")
+        print(f"Data directory: {run['data_dir']}")
+        print(f"Output directory: {run['output_dir']}")
+        if run.get("reverse_file_order"):
+            print("File order: REVERSE")
+        print(f"Timed repeats per method: {args.n_repeats}")
+        benchmark = HessianBenchmark(test_over_conformations=run["test_over_conformations"])
+
+        try:
+            benchmark.benchmark_directory(
+                data_dir=run["data_dir"],
+                output_dir=run["output_dir"],
+                n_repeats=args.n_repeats,
+                reverse_file_order=run.get("reverse_file_order", False),
+            )
+            print(f"\n{run['name']} benchmark completed successfully!")
+        except Exception as e:
+            print(f"{run['name']} benchmark failed: {e}")
+            raise
 
 
 if __name__ == "__main__":
