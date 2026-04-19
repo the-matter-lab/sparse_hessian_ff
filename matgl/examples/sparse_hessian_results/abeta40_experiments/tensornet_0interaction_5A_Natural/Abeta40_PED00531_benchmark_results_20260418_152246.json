@@ -1,0 +1,337 @@
+{
+  "dataset": "Abeta40_PED00531",
+  "timestamp": "20260418_152246",
+  "note": "Results include GPU warm-up before each system. Hessian matrices saved separately as .npy files.",
+  "results": [
+    {
+      "filename": "PED00531_model_0015_extended_mid.xyz",
+      "n_atoms": 598,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 24.94683490972966,
+          "time_std": 0.0,
+          "times": [
+            24.94683490972966
+          ],
+          "hvp_count": 1794,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 24.94683490972966
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 10.414054965600371,
+          "time_std": 0.0,
+          "times": [
+            10.414054965600371
+          ],
+          "hvp_count": 555,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 1.7056612288579345,
+            "hvp_loop_s": 7.961186124011874,
+            "recovery_s": 0.6466989601030946,
+            "overhead_s": 0.10050865262746811
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 7.696796914562583,
+          "time_std": 0.0,
+          "times": [
+            7.696796914562583
+          ],
+          "hvp_count": 324,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 1.4586000181734562,
+            "hvp_loop_s": 4.52502148039639,
+            "recovery_s": 1.6161224599927664,
+            "overhead_s": 0.09705295599997044
+          }
+        }
+      }
+    },
+    {
+      "filename": "PED00531_model_0082_compact_mid.xyz",
+      "n_atoms": 598,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 24.842137630097568,
+          "time_std": 0.0,
+          "times": [
+            24.842137630097568
+          ],
+          "hvp_count": 1794,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 24.842137630097568
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 12.140883713029325,
+          "time_std": 0.0,
+          "times": [
+            12.140883713029325
+          ],
+          "hvp_count": 651,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 2.3001223849132657,
+            "hvp_loop_s": 9.002079906873405,
+            "recovery_s": 0.7130051050335169,
+            "overhead_s": 0.12567631620913744
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 8.846387966535985,
+          "time_std": 0.0,
+          "times": [
+            8.846387966535985
+          ],
+          "hvp_count": 372,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 1.9670241316780448,
+            "hvp_loop_s": 5.156179105862975,
+            "recovery_s": 1.6194748943671584,
+            "overhead_s": 0.10370983462780714
+          }
+        }
+      }
+    },
+    {
+      "filename": "PED00531_model_0105_most_compact.xyz",
+      "n_atoms": 598,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 25.23006774391979,
+          "time_std": 0.0,
+          "times": [
+            25.23006774391979
+          ],
+          "hvp_count": 1794,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 25.23006774391979
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 11.037353307940066,
+          "time_std": 0.0,
+          "times": [
+            11.037353307940066
+          ],
+          "hvp_count": 615,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 1.7859313832595944,
+            "hvp_loop_s": 8.483633647672832,
+            "recovery_s": 0.6611568443477154,
+            "overhead_s": 0.10663143265992403
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 8.95033648610115,
+          "time_std": 0.0,
+          "times": [
+            8.95033648610115
+          ],
+          "hvp_count": 381,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 2.0087655894458294,
+            "hvp_loop_s": 5.330565225332975,
+            "recovery_s": 1.5073637953028083,
+            "overhead_s": 0.10364187601953745
+          }
+        }
+      }
+    },
+    {
+      "filename": "PED00531_model_0853_middle.xyz",
+      "n_atoms": 598,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 24.662435123696923,
+          "time_std": 0.0,
+          "times": [
+            24.662435123696923
+          ],
+          "hvp_count": 1794,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 24.662435123696923
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 11.181844756007195,
+          "time_std": 0.0,
+          "times": [
+            11.181844756007195
+          ],
+          "hvp_count": 621,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 1.9036426022648811,
+            "hvp_loop_s": 8.484468632377684,
+            "recovery_s": 0.6876026596873999,
+            "overhead_s": 0.1061308616772294
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 8.432885821908712,
+          "time_std": 0.0,
+          "times": [
+            8.432885821908712
+          ],
+          "hvp_count": 366,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 1.7142961388453841,
+            "hvp_loop_s": 5.065061538480222,
+            "recovery_s": 1.551430313847959,
+            "overhead_s": 0.102097830735147
+          }
+        }
+      }
+    },
+    {
+      "filename": "PED00531_model_0894_most_extended.xyz",
+      "n_atoms": 598,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 25.193266415037215,
+          "time_std": 0.0,
+          "times": [
+            25.193266415037215
+          ],
+          "hvp_count": 1794,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 25.193266415037215
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 4.893590798601508,
+          "time_std": 0.0,
+          "times": [
+            4.893590798601508
+          ],
+          "hvp_count": 270,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 0.6191740240901709,
+            "hvp_loop_s": 3.7801285395398736,
+            "recovery_s": 0.41848568338900805,
+            "overhead_s": 0.07580255158245564
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 4.431534001603723,
+          "time_std": 0.0,
+          "times": [
+            4.431534001603723
+          ],
+          "hvp_count": 180,
+          "hessian_shape": [
+            1794,
+            1794
+          ],
+          "n_atoms": 598,
+          "timing_breakdown": {
+            "coloring_s": 0.915202833712101,
+            "hvp_loop_s": 2.500831075012684,
+            "recovery_s": 0.9432101426646113,
+            "overhead_s": 0.07228995021432638
+          }
+        }
+      }
+    }
+  ]
+}

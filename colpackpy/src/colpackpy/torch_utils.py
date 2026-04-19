@@ -1,6 +1,7 @@
 """PyTorch utilities for efficient sparse Hessian computation using ColPack."""
 
 from typing import Callable
+import time
 import torch
 from torch import Tensor
 from torch.func import jacrev, jvp, vmap
@@ -8,7 +9,7 @@ import numpy as np
 from torch.autograd import grad
 
 
-from colpackpy.coloring import get_seeds_from_pattern
+from colpackpy.coloring import get_seeds_from_pattern  # type: ignore[reportMissingImports]
 from colpackpy.recovery import recover_matrix
 
 
@@ -225,8 +226,10 @@ def compute_sparse_hessian(y,
                         sparsity_pattern, 
                         n, 
                         algorithm, 
+                        ordering="SMALLEST_LAST",
                         precomputed_grads=None, 
                         return_seed_matrix=False,
+                        return_stats=False,
                         hessian_return_type="sparse"
                         ) -> Tensor | tuple[Tensor, Tensor]:
         """Compute sparse hessian using ColPack coloring algorithms.
@@ -237,8 +240,10 @@ def compute_sparse_hessian(y,
             sparsity_pattern: Sparsity pattern
             n: Number of dimensions of x
             algorithm: Coloring algorithm ("star" | "acyclic" | "distance_two")
+            ordering: Node ordering strategy for ColPack coloring
             precomputed_grads: Already computed gradients of y with respect to x to avoid recomputation
             return_seed_matrix: If True, return the seed matrix used to compress the Hessian
+            return_stats: If True, return sparse timing/statistics metadata
             hessian_return_type: Return type for hessian calculation, sparse or dense arrays
         Returns:
             Hessian tensor (sparse or dense based on hessian_return_type)
@@ -247,7 +252,17 @@ def compute_sparse_hessian(y,
 
         # Get coloring using specified algorithm
         ALGORITHM = algorithm.upper()
-        S, colors, comps = get_seeds_from_pattern(sparsity_pattern, n, "SMALLEST_LAST", ALGORITHM)
+        ordering = ordering.upper()
+        def sync_if_needed():
+            if x.is_cuda:
+                torch.cuda.synchronize(x.device)
+
+        if return_stats:
+            sync_if_needed()
+            t_coloring = time.perf_counter()
+        S, colors, comps = get_seeds_from_pattern(sparsity_pattern, n, ordering, ALGORITHM)
+        if return_stats:
+            coloring_s = time.perf_counter() - t_coloring
         
         # Convert to tensor
         S = torch.tensor(S, dtype=x.dtype, device=x.device)
@@ -272,6 +287,9 @@ def compute_sparse_hessian(y,
         grad_seed_products = torch.mv(S.T, r)
         
         # Compute HVPs in efficient loop
+        if return_stats:
+            sync_if_needed()
+            t_hvp = time.perf_counter()
         for i in range(S.shape[1]):
             # Use the pre-computed dot product
             grad_seed_product = grad_seed_products[i]
@@ -285,8 +303,14 @@ def compute_sparse_hessian(y,
             
             if hvp_result is not None:
                 Y[:, i] = hvp_result.view(-1)
+        if return_stats:
+            sync_if_needed()
+            hvp_loop_s = time.perf_counter() - t_hvp
         
         # Recover sparse matrix using colpackpy
+        if return_stats:
+            sync_if_needed()
+            t_recovery = time.perf_counter()
         H_recovered = recover_matrix(
             recover_from=ALGORITHM,
             edges=sparsity_pattern,
@@ -297,6 +321,9 @@ def compute_sparse_hessian(y,
             reconstruct_sparsely=(hessian_return_type == "sparse"),
             verify=False,
         )
+        if return_stats:
+            sync_if_needed()
+            recovery_s = time.perf_counter() - t_recovery
         
         # Prepare return value
         if hessian_return_type == "sparse":
@@ -313,5 +340,22 @@ def compute_sparse_hessian(y,
             out = (hessian_result, S)
         else:
             out = hessian_result
+        if return_stats:
+            stats = {
+                "num_colors": int(S.shape[1]),
+                "num_hvps": int(S.shape[1]),
+                "dimension": int(n),
+                "num_edges": int(len(sparsity_pattern)),
+                "compression_ratio": float(n / S.shape[1]),
+                "timings_s": {
+                    "coloring_s": float(coloring_s),
+                    "hvp_loop_s": float(hvp_loop_s),
+                    "recovery_s": float(recovery_s),
+                },
+            }
+            if return_seed_matrix:
+                out = (hessian_result, S, stats)
+            else:
+                out = (hessian_result, stats)
         return out
 

@@ -14,11 +14,15 @@ from torch.func import jvp
 import matgl
 from matgl.layers import AtomRef, NuclearRepulsion
 from matgl.utils.io import IOMixIn
-from matgl.graph.compute import create_sparsity_pattern_from_graph, create_sparsity_pattern_from_cutoff
+from matgl.graph.compute import (
+    create_sparsity_pattern_from_cutoff,
+    create_sparsity_pattern_from_graph,
+    num_graph_hops_for_hessian_sparsity,
+)
 try:
-    from colpackpy.coloring import get_seeds_from_pattern   # returns (S, colors, comps)
-    from colpackpy.recovery import recover_matrix            # your function we modified
-    from colpackpy.torch_utils import compute_sparse_hessian, compute_sparse_hessian_fn
+    from colpackpy.coloring import get_seeds_from_pattern  # type: ignore[reportMissingImports]
+    from colpackpy.recovery import recover_matrix  # type: ignore[reportMissingImports]
+    from colpackpy.torch_utils import compute_sparse_hessian, compute_sparse_hessian_fn  # type: ignore[reportMissingImports]
     COLPACK_AVAILABLE = True
 except ImportError:
     COLPACK_AVAILABLE = False
@@ -70,6 +74,8 @@ class Potential(nn.Module, IOMixIn):
         hessian_return_type: str = "dense", # "sparse" | "dense"
         return_seed_matrix: bool = False, # Return seed matrix along with hessian
         hessian_sparsity_cutoff: float | None = None, # Cutoff radius for sparsity pattern (Angstroms). If None, uses graph-based sparsity from num_layers
+        hessian_coloring_ordering: str = "SMALLEST_LAST", # ColPack ordering heuristic for sparse Hessian coloring
+        return_hessian_breakdown: bool = False, # Return sparse Hessian timing breakdown metadata
     ):
         """Initialize Potential from a model and elemental references.
 
@@ -91,6 +97,8 @@ class Potential(nn.Module, IOMixIn):
             hessian_return_type: Return type for hessian calculation, sparse or dense arrays
             return_seed_matrix: Whether to return the seed matrix along with the hessian for sparse algorithms
             hessian_sparsity_cutoff: Cutoff radius for sparsity pattern (Angstroms). If None, uses graph-based sparsity from num_layers. If provided, creates sparsity pattern based on geometric distance rather than graph connectivity.
+            hessian_coloring_ordering: ColPack vertex ordering heuristic used before star/acyclic/distance-two coloring.
+            return_hessian_breakdown: Whether to return sparse-Hessian timing breakdown metadata.
         """
         super().__init__()
         self.save_args(locals())
@@ -108,6 +116,8 @@ class Potential(nn.Module, IOMixIn):
         self.hessian_from_finite_differences = hessian_from_finite_differences
         self.hessian_delta = hessian_delta
         self.hessian_sparsity_cutoff = hessian_sparsity_cutoff
+        self.hessian_coloring_ordering = hessian_coloring_ordering
+        self.return_hessian_breakdown = return_hessian_breakdown
         if calc_repuls:
             self.repuls = NuclearRepulsion(self.model.cutoff, trainable=zbl_trainable)
 
@@ -203,8 +213,9 @@ class Potential(nn.Module, IOMixIn):
                         sparsity_pattern, n = create_sparsity_pattern_from_cutoff(g, self.hessian_sparsity_cutoff)
                     else:
                         # Use graph-based sparsity pattern (default)
-                        num_layers = len(self.model.layers) if hasattr(self.model, 'layers') else 1
-                        sparsity_pattern, n = create_sparsity_pattern_from_graph(g, num_layers)
+                        sparsity_pattern, n = create_sparsity_pattern_from_graph(
+                            g, num_graph_hops_for_hessian_sparsity(self.model)
+                        )
                     if self.hessian_from_finite_differences:
                         def total_energies_fn(x):
                             g.ndata["pos"] = x
@@ -219,6 +230,7 @@ class Potential(nn.Module, IOMixIn):
                             sparsity_pattern,
                             n,
                             coloring_algorithm=self.hessian_algorithm,
+                            ordering=self.hessian_coloring_ordering,
                             return_seed_matrix=self.return_seed_matrix,
                             use_finite_differences=self.hessian_from_finite_differences,
                             delta=self.hessian_delta,
@@ -232,8 +244,10 @@ class Potential(nn.Module, IOMixIn):
                             sparsity_pattern,
                             n,
                             self.hessian_algorithm,
+                            ordering=self.hessian_coloring_ordering,
                             precomputed_grads=grads[0],
                             return_seed_matrix=self.return_seed_matrix,
+                            return_stats=self.return_hessian_breakdown,
                             hessian_return_type=self.hessian_return_type,
                         )
                     hessian = hessian_out

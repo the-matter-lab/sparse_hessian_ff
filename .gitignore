@@ -1,0 +1,6 @@
+# Large binaries (> GitHub 100MB file limit); regenerate locally or use Git LFS
+data/Abeta40_PED00531/pdbfile.pdb
+**/sparsity_pattern_data_slowest_964.xyz_*.npz
+
+# Archived experiment outputs (removed from repo)
+matgl/examples/sparse_hessian_results_old/

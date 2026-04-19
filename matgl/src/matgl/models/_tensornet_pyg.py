@@ -167,11 +167,10 @@ class TensorNet(MatGLModel):
         )
 
         self.layers = nn.ModuleList(
-            {
+            [
                 TensorNetInteractionPYG(num_rbf, units, activation, cutoff, equivariance_invariance_group, dtype)
                 for _ in range(nblocks)
-                if nblocks != 0
-            }
+            ]
         )
 
         self.out_norm = nn.LayerNorm(3 * units, dtype=dtype)

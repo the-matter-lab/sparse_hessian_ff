@@ -16,6 +16,7 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 from datetime import datetime
+from pathlib import Path
 
 # Relative-error denominator regularization used for full-spectrum comparisons.
 FULL_SPECTRUM_REG_EPS = 1e-5
@@ -38,12 +39,35 @@ COLORS = {
     "distance_two": "purple",
 }
 
+# Experiment configuration
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parent.parent
+MODEL_NAME = "CHGNet-MatPES-r2SCAN-2025.2.10-2.7M-PES"
+MODEL_PATH = REPO_ROOT / "matgl" / "pretrained_models" / MODEL_NAME
+STRUCTURE_PATH = (
+    REPO_ROOT
+    / "matgl"
+    / "examples"
+    / "sparse_hessian_results"
+    / "chignolin_experiments"
+    / "mol_viz"
+    / "Coordinates_9999.xyz"
+)
+
+print("=" * 80)
+print("Sparse Hessian cutoff experiment")
+print("=" * 80)
+print(f"Model: {MODEL_NAME}")
+print(f"Structure: {STRUCTURE_PATH}")
+print("Loading model and structure...")
+
 # Load model and structure
-pot = matgl.load_model("../pretrained_models/TensorNet-ANI-1x-Subset-PES")
+pot = matgl.load_model(str(MODEL_PATH))
 pot.calc_hessian = True
 pot.return_seed_matrix = True
 pot.hessian_delta = 5e-3
-atoms = read('/h/28/lucahiede/Projects/sparse_hessian_ff/data/Water Cluster/76.xyz')
+atoms = read(str(STRUCTURE_PATH))
+print(f"Loaded structure with {len(atoms)} atoms")
 
 calc = PESCalculator(pot)
 
@@ -103,7 +127,7 @@ def projected_vibrational_eigvals(hessian, masses, vib_basis):
     return np.linalg.eigvalsh(hessian_vib)
 
 # Compute naive hessian (reference)
-print("Computing naive hessian...")
+print("\n[1/4] Computing naive reference Hessian...")
 pot.hessian_algorithm = "naive"
 pot.hessian_sparsity_cutoff = None  # Use default graph-based
 calc.calculate(atoms, properties=['hessian'])
@@ -114,7 +138,7 @@ masses = np.asarray(atoms.get_masses(), dtype=float)
 vib_basis = get_vibrational_basis_from_eckart(atoms)
 
 # Cutoffs to test
-cutoffs = np.arange(5, 13, 1)  # 5 to 12 Angstroms
+cutoffs = np.arange(5, 33, 3)  # 5 to 32 Angstroms, step size 3
 algorithms = ["star", "acyclic"]
 if INCLUDE_DISTANCE_TWO:
     algorithms = ["distance_two", *algorithms]
@@ -127,6 +151,7 @@ first_n_eigvals = 10  # Parameter for eigenvalue comparison
 included_full_case = {alg: False for alg in algorithms}
 
 # Loop through cutoffs
+print(f"\n[2/4] Sweeping {len(cutoffs)} cutoff values: {cutoffs.tolist()}")
 for cutoff in cutoffs:
     print(f"\nTesting cutoff: {cutoff} Angstroms")
     
@@ -173,10 +198,10 @@ for cutoff in cutoffs:
             hessians[alg].append(None)
 
 # Create plots
+print("\n[3/4] Generating plots and saving outputs...")
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-script_dir = os.path.dirname(os.path.abspath(__file__))
-output_dir = os.path.join(script_dir, "sparse_hessian_results", "cutoff_experiments")
-os.makedirs(output_dir, exist_ok=True)
+output_dir = SCRIPT_DIR / "sparse_hessian_results" / "cutoff_experiments"
+output_dir.mkdir(exist_ok=True)
 
 # Compute eigenvalue differences
 eigenval_errors = {alg: [] for alg in algorithms}
@@ -248,7 +273,7 @@ plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
-error_plot_path = f"{output_dir}/cutoff_error_comparison_{timestamp}.png"
+error_plot_path = output_dir / f"cutoff_error_comparison_{timestamp}.png"
 plt.savefig(error_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"\nSaved error plot to: {error_plot_path}")
@@ -280,7 +305,7 @@ plt.axhline(
 plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-hvp_plot_path = f"{output_dir}/cutoff_hvp_comparison_{timestamp}.png"
+hvp_plot_path = output_dir / f"cutoff_hvp_comparison_{timestamp}.png"
 plt.savefig(hvp_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved HVP plot to: {hvp_plot_path}")
@@ -306,7 +331,7 @@ plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
-eigenval_plot_path = f"{output_dir}/cutoff_eigenval_comparison_{timestamp}.png"
+eigenval_plot_path = output_dir / f"cutoff_eigenval_comparison_{timestamp}.png"
 plt.savefig(eigenval_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved eigenvalue comparison plot to: {eigenval_plot_path}")
@@ -332,7 +357,7 @@ plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
-eigenval_all_plot_path = f"{output_dir}/cutoff_eigenval_all_comparison_{timestamp}.png"
+eigenval_all_plot_path = output_dir / f"cutoff_eigenval_all_comparison_{timestamp}.png"
 plt.savefig(eigenval_all_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved all-eigenvalue comparison plot to: {eigenval_all_plot_path}")
@@ -365,7 +390,7 @@ plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
-error_hvp_plot_path = f"{output_dir}/error_vs_hvp_comparison_{timestamp}.png"
+error_hvp_plot_path = output_dir / f"error_vs_hvp_comparison_{timestamp}.png"
 plt.savefig(error_hvp_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved error vs HVP plot to: {error_hvp_plot_path}")
@@ -398,7 +423,7 @@ plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
-eigenval_hvp_plot_path = f"{output_dir}/eigenval_vs_hvp_comparison_{timestamp}.png"
+eigenval_hvp_plot_path = output_dir / f"eigenval_vs_hvp_comparison_{timestamp}.png"
 plt.savefig(eigenval_hvp_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved eigenvalue vs HVP plot to: {eigenval_hvp_plot_path}")
@@ -431,7 +456,7 @@ plt.legend(fontsize=LEGEND_FONTSIZE)
 plt.grid(True, alpha=0.3)
 plt.yscale('log', nonpositive='mask')
 plt.tight_layout()
-eigenval_all_hvp_plot_path = f"{output_dir}/eigenval_all_vs_hvp_comparison_{timestamp}.png"
+eigenval_all_hvp_plot_path = output_dir / f"eigenval_all_vs_hvp_comparison_{timestamp}.png"
 plt.savefig(eigenval_all_hvp_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved all-eigenvalue vs HVP plot to: {eigenval_all_hvp_plot_path}")
@@ -500,13 +525,13 @@ for col_idx, alg in enumerate(algorithms):
     ax_bottom.set_xlabel('Ground-Truth Eigenvalue', fontsize=LABEL_FONTSIZE)
 
 plt.tight_layout(rect=[0, 0, 1, 0.96])
-per_eigen_plot_path = f"{output_dir}/per_eigenvalue_error_bars_{timestamp}.png"
+per_eigen_plot_path = output_dir / f"per_eigenvalue_error_bars_{timestamp}.png"
 plt.savefig(per_eigen_plot_path, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Saved per-eigenvalue error bar plot to: {per_eigen_plot_path}")
 
 # Save raw data used in plots for debugging without rerunning.
-debug_data_path = f"{output_dir}/cutoff_debug_data_{timestamp}.npz"
+debug_data_path = output_dir / f"cutoff_debug_data_{timestamp}.npz"
 debug_payload = {
     "cutoffs": np.asarray(cutoffs, dtype=float),
     "full_hessian_rows": np.asarray([full_hessian_rows], dtype=int),
@@ -537,7 +562,7 @@ print(f"Saved debug data to: {debug_data_path}")
 
 # Save a single consolidated payload containing all plot series.
 if PLOT_DATA_DUMP:
-    plot_series_path = f"{output_dir}/cutoff_plot_series_{timestamp}.npz"
+    plot_series_path = output_dir / f"cutoff_plot_series_{timestamp}.npz"
     series_payload = {
         "timestamp": np.asarray([timestamp], dtype=object),
         "cutoffs": np.asarray(cutoffs, dtype=float),
@@ -561,6 +586,7 @@ if PLOT_DATA_DUMP:
     print(f"Saved plot series to: {plot_series_path}")
 
 # Print summary
+print("\n[4/4] Final summary")
 print("\n" + "="*60)
 print("Summary:")
 print("="*60)

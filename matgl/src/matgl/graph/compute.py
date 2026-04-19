@@ -386,58 +386,115 @@ def _ensure_directed_line_graph_compatibility(
     return line_graph
 
 
-def create_sparsity_pattern_from_graph(g: "dgl.DGLGraph", num_layers: int) -> tuple["np.ndarray", int]:
-    """Create sparsity pattern from DGL graph structure for 3D coordinates.
+def _atom_adjacency_coo_from_edge_pairs(sources: "np.ndarray", destinations: "np.ndarray", num_atoms: int):
+    """SciPy COO atom adjacency with self-loops from parallel source and destination index arrays."""
+    from scipy.sparse import coo_matrix
 
-    For an L-layer neural network, atoms that are up to L hops away in the graph
-    can have non-zero Hessian entries.
+    adjacency = coo_matrix(
+        (np.ones(len(sources), dtype=np.float64), (sources, destinations)),
+        shape=(num_atoms, num_atoms),
+    )
+    adjacency.setdiag(1)
+    return adjacency
+
+
+def _atom_adjacency_coo_with_self_loops(g: object):
+    """SciPy COO atom adjacency (with self-loops) from a DGL graph or PyG ``Data`` / single-graph ``Batch``."""
+    PyGData = None
+    Batch = None
+    try:
+        from torch_geometric.data import Batch as _Batch, Data as _PyGData
+
+        Batch, PyGData = _Batch, _PyGData
+    except ImportError:
+        pass
+
+    if PyGData is not None and isinstance(g, (PyGData, Batch)):
+        if isinstance(g, Batch) and g.num_graphs > 1:
+            raise ValueError(
+                "``create_sparsity_pattern_from_graph`` only supports a single PyG graph "
+                "(use one ``Data`` object or a ``Batch`` with ``num_graphs == 1``)."
+            )
+        ei = g.edge_index
+        if isinstance(ei, torch.Tensor):
+            ei = ei.detach().cpu().numpy()
+        sources, destinations = ei[0], ei[1]
+        num_atoms = int(g.num_nodes)
+    else:
+        sources, destinations = g.edges()
+        sources = sources.cpu().numpy()
+        destinations = destinations.cpu().numpy()
+        num_atoms = g.num_nodes()
+
+    return _atom_adjacency_coo_from_edge_pairs(sources, destinations, num_atoms)
+
+
+def _atom_pair_sparsity_coo_from_adjacency(adjacency, num_layers: int):
+    """Atom-level COO sparsity: ``1[(A^h)^T @ A^h != 0]`` on the support of ``A^h`` (``A`` includes self-loops).
+
+    Uses ``int32`` for the boolean support before ``M.T @ M`` so common-ancestor counts do not overflow.
+    """
+    receptive_fields = adjacency.copy()
+    for _ in range(num_layers - 1):
+        receptive_fields = receptive_fields @ adjacency
+
+    receptive_fields = (receptive_fields != 0).astype(np.int32)
+    return ((receptive_fields.transpose() @ receptive_fields) != 0).tocoo()
+
+
+def num_graph_hops_for_hessian_sparsity(model: object) -> int:
+    """Effective number of graph hops to use in ``create_sparsity_pattern_from_graph``.
+
+    Uses ``len(model.layers)`` when present, otherwise ``1``. Adds one hop when
+    ``model`` has a TensorNet-style ``tensor_embedding``: that block aggregates
+    neighbors before the first ``TensorNetInteraction`` / ``TensorNetInteractionPYG``,
+    so the coupling radius matches ``interaction_layers + 1`` hops on the atom graph.
 
     Args:
-        g: DGL graph
-        num_layers: Number of layers in the model (determines sparsity pattern)
+        model: A matgl model (e.g. ``TensorNet``, ``CHGNet``, ``M3GNet``).
+
+    Returns:
+        Integer ``hops >= 1`` to pass as ``num_layers`` to ``create_sparsity_pattern_from_graph``.
+    """
+    if hasattr(model, "layers") and model.layers is not None:
+        n = len(model.layers)
+    else:
+        n = 1
+    if hasattr(model, "tensor_embedding"):
+        n += 1
+    return max(n, 1)
+
+
+def create_sparsity_pattern_from_graph(g: object, num_layers: int) -> tuple["np.ndarray", int]:
+    """Create Hessian sparsity from graph receptive fields for 3D coordinates.
+
+    For ``h`` effective message-passing hops on the atom adjacency ``A`` (including
+    any embedding step; see ``num_graph_hops_for_hessian_sparsity``), let
+    ``M = 1[(A + I)^h != 0]``. The atom-level Hessian sparsity support is
+    ``1[M.T @ M != 0]``, expanded into Cartesian 3×3 blocks.
+
+    Args:
+        g: DGL graph, or a PyTorch Geometric ``Data`` / single-graph ``Batch``.
+        num_layers: Number of hops ``h`` (not necessarily ``len(model.layers)`` alone).
 
     Returns:
         edges: Edge list as (N, 2) array for 3D coordinate Hessian
         n: Number of DOFs (atoms * 3)
     """
-    import numpy as np
-    from scipy.sparse import coo_matrix
+    adjacency = _atom_adjacency_coo_with_self_loops(g)
+    atom_sparsity = _atom_pair_sparsity_coo_from_adjacency(adjacency, num_layers)
+    return _expand_atom_sparsity_pattern(atom_sparsity)
 
-    # Get graph edges and create adjacency matrix
-    sources, destinations = g.edges()
-    sources = sources.cpu().numpy()
-    destinations = destinations.cpu().numpy()
-    num_atoms = g.num_nodes()
 
-    # Create adjacency matrix (already symmetric from undirected graph)
-    adjacency = coo_matrix(
-        (np.ones(len(sources)), (sources, destinations)),
-        shape=(num_atoms, num_atoms)
-    )
+def _expand_atom_sparsity_pattern(atom_sparsity) -> tuple["np.ndarray", int]:
+    """Expand an atom-level sparsity pattern to Cartesian coordinates."""
+    from scipy.sparse import coo_matrix, kron
 
-    # Add self-loops (diagonal)
-    adjacency.setdiag(1)
-
-    # Compute A^L to get L-hop connectivity
-    adjacency_power = adjacency.copy()
-    for _ in range(num_layers - 1):
-        adjacency_power = adjacency_power @ adjacency
-
-    # Convert to boolean (non-zero entries indicate connectivity)
-    sparsity_pattern = (adjacency_power != 0).tocoo()
-
-    # Get number of DOFs
-    n = num_atoms * 3  # 3 DOFs per atom
-
-    # Expand to 3D coordinates using sparse Kronecker product
-    # Each atom-atom interaction becomes 3x3 block
-    from scipy.sparse import kron
+    atom_sparsity = atom_sparsity.tocoo()
+    n = atom_sparsity.shape[0] * 3
     ones_3x3 = coo_matrix(np.ones((3, 3)))
-    expanded_sparsity = kron(sparsity_pattern, ones_3x3).tocoo()
-
-    # Create edge list from sparse matrix
+    expanded_sparsity = kron(atom_sparsity, ones_3x3).tocoo()
     edges = np.vstack((expanded_sparsity.row, expanded_sparsity.col)).T
-
     return edges, n
 
 

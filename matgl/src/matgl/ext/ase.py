@@ -31,6 +31,7 @@ from pymatgen.core.structure import Molecule, Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.optimization.neighbors import find_points_in_spheres
 
+from matgl.graph._converters_pyg import GraphConverter as GraphConverterPYG
 from matgl.graph.converters import GraphConverter
 
 if TYPE_CHECKING:
@@ -127,6 +128,60 @@ class Atoms2Graph(GraphConverter):
         return g, lat, state_attr
 
 
+class Atoms2GraphPYG(GraphConverterPYG):
+    """Construct a PyTorch Geometric ``Data`` graph from ASE ``Atoms`` (same topology as ``Atoms2Graph``)."""
+
+    def __init__(
+        self,
+        element_types: tuple[str, ...],
+        cutoff: float = 5.0,
+    ):
+        self.element_types = tuple(element_types)
+        self.cutoff = cutoff
+
+    def get_graph(self, atoms: Atoms):
+        """Build a ``torch_geometric.data.Data`` object for ``atoms``."""
+        numerical_tol = 1.0e-8
+        pbc = np.array([1, 1, 1], dtype=np.int64)
+        element_types = self.element_types
+        lattice_matrix = np.array(atoms.get_cell()) if atoms.pbc.all() else np.expand_dims(np.identity(3), axis=0)
+        cart_coords = atoms.get_positions()
+        if atoms.pbc.all():
+            src_id, dst_id, images, bond_dist = find_points_in_spheres(
+                cart_coords,
+                cart_coords,
+                r=self.cutoff,
+                pbc=pbc,
+                lattice=lattice_matrix,
+                tol=numerical_tol,
+            )
+            exclude_self = (src_id != dst_id) | (bond_dist > numerical_tol)
+            src_id, dst_id, images, bond_dist = (
+                src_id[exclude_self],
+                dst_id[exclude_self],
+                images[exclude_self],
+                bond_dist[exclude_self],
+            )
+        else:
+            dist = np.linalg.norm(cart_coords[:, None, :] - cart_coords[None, :, :], axis=-1)
+            adj = sp.csr_matrix(dist <= self.cutoff) - sp.eye(len(atoms.get_positions()), dtype=np.bool_)
+            adj = adj.tocoo()
+            src_id = adj.row
+            dst_id = adj.col
+        g, lat, state_attr = super().get_graph_from_processed_structure(
+            atoms,
+            src_id,
+            dst_id,
+            images if atoms.pbc.all() else np.zeros((len(src_id), 3)),
+            [lattice_matrix] if atoms.pbc.all() else lattice_matrix,
+            element_types,
+            atoms.get_scaled_positions(False) if atoms.pbc.all() else cart_coords,
+            is_atoms=True,
+        )
+
+        return g, lat, state_attr
+
+
 class PESCalculator(Calculator):
     """Potential calculator for ASE."""
 
@@ -193,6 +248,7 @@ class PESCalculator(Calculator):
         properties = properties or ["energy"]
         system_changes = system_changes or all_changes
         super().calculate(atoms=atoms, properties=properties, system_changes=system_changes)
+        self.results.pop("hessian_breakdown", None)
         graph, lattice, state_attr_default = Atoms2Graph(self.element_types, self.cutoff).get_graph(atoms)
         # type: ignore
         if self.state_attr is not None:
@@ -216,16 +272,30 @@ class PESCalculator(Calculator):
             # tensor's deps, but explicit sync avoids rare multi-stream edge cases.
             import torch
 
-            _h = calc_result[3][0] if self.return_seed_matrix else calc_result[3]
+            hessian_payload = calc_result[3]
+            breakdown = None
+            if self.return_seed_matrix:
+                if isinstance(hessian_payload, tuple) and len(hessian_payload) == 3 and isinstance(hessian_payload[2], dict):
+                    hessian_tensor, seed_tensor, breakdown = hessian_payload
+                else:
+                    hessian_tensor, seed_tensor = hessian_payload
+                _h = hessian_tensor
+            else:
+                if isinstance(hessian_payload, tuple) and len(hessian_payload) == 2 and isinstance(hessian_payload[1], dict):
+                    _h, breakdown = hessian_payload
+                else:
+                    _h = hessian_payload
             if isinstance(_h, torch.Tensor) and _h.is_cuda:
                 torch.cuda.synchronize(_h.device)
             if self.return_seed_matrix:
                 self.results.update(
-                    hessian=calc_result[3][0].detach().cpu().numpy(),
-                    seed_matrix=calc_result[3][1].detach().cpu().numpy(),
+                    hessian=hessian_tensor.detach().cpu().numpy(),
+                    seed_matrix=seed_tensor.detach().cpu().numpy(),
                 )
             else:
-                self.results.update(hessian=calc_result[3].detach().cpu().numpy())
+                self.results.update(hessian=_h.detach().cpu().numpy())
+            if breakdown is not None:
+                self.results.update(hessian_breakdown=breakdown)
         if self.compute_magmom:
             self.results.update(magmoms=calc_result[4].detach().cpu().numpy())
 

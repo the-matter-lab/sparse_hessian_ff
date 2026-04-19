@@ -1,0 +1,337 @@
+{
+  "dataset": "Alkanes",
+  "timestamp": "20260418_155538",
+  "note": "Results include GPU warm-up before each system. Hessian matrices saved separately as .npy files.",
+  "results": [
+    {
+      "filename": "alkane_C10.xyz",
+      "n_atoms": 32,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 1.9812730876728892,
+          "time_std": 0.0,
+          "times": [
+            1.9812730876728892
+          ],
+          "hvp_count": 96,
+          "hessian_shape": [
+            96,
+            96
+          ],
+          "n_atoms": 32,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 1.9812730876728892
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 2.005679120309651,
+          "time_std": 0.0,
+          "times": [
+            2.005679120309651
+          ],
+          "hvp_count": 96,
+          "hessian_shape": [
+            96,
+            96
+          ],
+          "n_atoms": 32,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 2.005679120309651
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 2.055502224713564,
+          "time_std": 0.0,
+          "times": [
+            2.055502224713564
+          ],
+          "hvp_count": 96,
+          "hessian_shape": [
+            96,
+            96
+          ],
+          "n_atoms": 32,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 2.055502224713564
+          }
+        }
+      }
+    },
+    {
+      "filename": "alkane_C50.xyz",
+      "n_atoms": 152,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 8.783794616349041,
+          "time_std": 0.0,
+          "times": [
+            8.783794616349041
+          ],
+          "hvp_count": 456,
+          "hessian_shape": [
+            456,
+            456
+          ],
+          "n_atoms": 152,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 8.783794616349041
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 6.240763829089701,
+          "time_std": 0.0,
+          "times": [
+            6.240763829089701
+          ],
+          "hvp_count": 288,
+          "hessian_shape": [
+            456,
+            456
+          ],
+          "n_atoms": 152,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 6.240763829089701
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 3.573441969230771,
+          "time_std": 0.0,
+          "times": [
+            3.573441969230771
+          ],
+          "hvp_count": 150,
+          "hessian_shape": [
+            456,
+            456
+          ],
+          "n_atoms": 152,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 3.573441969230771
+          }
+        }
+      }
+    },
+    {
+      "filename": "alkane_C100.xyz",
+      "n_atoms": 302,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 17.42496725078672,
+          "time_std": 0.0,
+          "times": [
+            17.42496725078672
+          ],
+          "hvp_count": 906,
+          "hessian_shape": [
+            906,
+            906
+          ],
+          "n_atoms": 302,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 17.42496725078672
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 6.6396473394706845,
+          "time_std": 0.0,
+          "times": [
+            6.6396473394706845
+          ],
+          "hvp_count": 291,
+          "hessian_shape": [
+            906,
+            906
+          ],
+          "n_atoms": 302,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 6.6396473394706845
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 3.9382353881374,
+          "time_std": 0.0,
+          "times": [
+            3.9382353881374
+          ],
+          "hvp_count": 150,
+          "hessian_shape": [
+            906,
+            906
+          ],
+          "n_atoms": 302,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 3.9382353881374
+          }
+        }
+      }
+    },
+    {
+      "filename": "alkane_C200.xyz",
+      "n_atoms": 602,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 54.79031026922166,
+          "time_std": 0.0,
+          "times": [
+            54.79031026922166
+          ],
+          "hvp_count": 1806,
+          "hessian_shape": [
+            1806,
+            1806
+          ],
+          "n_atoms": 602,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 54.79031026922166
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 10.46226517111063,
+          "time_std": 0.0,
+          "times": [
+            10.46226517111063
+          ],
+          "hvp_count": 291,
+          "hessian_shape": [
+            1806,
+            1806
+          ],
+          "n_atoms": 602,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 10.46226517111063
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 6.392677873373032,
+          "time_std": 0.0,
+          "times": [
+            6.392677873373032
+          ],
+          "hvp_count": 150,
+          "hessian_shape": [
+            1806,
+            1806
+          ],
+          "n_atoms": 602,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 6.392677873373032
+          }
+        }
+      }
+    },
+    {
+      "filename": "alkane_C300.xyz",
+      "n_atoms": 902,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 121.73113736417145,
+          "time_std": 0.0,
+          "times": [
+            121.73113736417145
+          ],
+          "hvp_count": 2706,
+          "hessian_shape": [
+            2706,
+            2706
+          ],
+          "n_atoms": 902,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 121.73113736417145
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 15.423810253851116,
+          "time_std": 0.0,
+          "times": [
+            15.423810253851116
+          ],
+          "hvp_count": 291,
+          "hessian_shape": [
+            2706,
+            2706
+          ],
+          "n_atoms": 902,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 15.423810253851116
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 9.316455873660743,
+          "time_std": 0.0,
+          "times": [
+            9.316455873660743
+          ],
+          "hvp_count": 150,
+          "hessian_shape": [
+            2706,
+            2706
+          ],
+          "n_atoms": 902,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 9.316455873660743
+          }
+        }
+      }
+    }
+  ]
+}

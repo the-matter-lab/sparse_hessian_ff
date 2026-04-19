@@ -1,0 +1,8 @@
+Abeta40 (amyloid-beta 1-40) is a 40-residue peptide produced from the amyloid precursor protein (APP).
+It is a widely studied intrinsically disordered peptide related to Alzheimer's disease and can adopt both compact and extended conformations in solution.
+
+This dataset was downloaded from the Protein Ensemble Database (PED), entry PED00531:
+https://proteinensemble.org/entries/PED00531
+
+The ensemble corresponds to a reweighted A beta 40 conformational ensemble with 2998 models.
+The XYZ files in this folder were selected as representative compact-to-extended conformers from that larger ensemble.

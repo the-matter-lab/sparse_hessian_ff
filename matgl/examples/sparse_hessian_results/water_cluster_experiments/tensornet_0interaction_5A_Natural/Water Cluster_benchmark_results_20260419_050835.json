@@ -1,0 +1,469 @@
+{
+  "dataset": "Water Cluster",
+  "timestamp": "20260419_050835",
+  "note": "Results include GPU warm-up before each system. Hessian matrices saved separately as .npy files.",
+  "results": [
+    {
+      "filename": "5.xyz",
+      "n_atoms": 15,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 0.6820318838581443,
+          "time_std": 0.0,
+          "times": [
+            0.6820318838581443
+          ],
+          "hvp_count": 45,
+          "hessian_shape": [
+            45,
+            45
+          ],
+          "n_atoms": 15,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 0.6820318838581443
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 0.7091539585962892,
+          "time_std": 0.0,
+          "times": [
+            0.7091539585962892
+          ],
+          "hvp_count": 45,
+          "hessian_shape": [
+            45,
+            45
+          ],
+          "n_atoms": 15,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 0.7091539585962892
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 0.718278213404119,
+          "time_std": 0.0,
+          "times": [
+            0.718278213404119
+          ],
+          "hvp_count": 45,
+          "hessian_shape": [
+            45,
+            45
+          ],
+          "n_atoms": 15,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 0.718278213404119
+          }
+        }
+      }
+    },
+    {
+      "filename": "47.xyz",
+      "n_atoms": 141,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 5.960311881266534,
+          "time_std": 0.0,
+          "times": [
+            5.960311881266534
+          ],
+          "hvp_count": 423,
+          "hessian_shape": [
+            423,
+            423
+          ],
+          "n_atoms": 141,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 5.960311881266534
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 5.630643715150654,
+          "time_std": 0.0,
+          "times": [
+            5.630643715150654
+          ],
+          "hvp_count": 363,
+          "hessian_shape": [
+            423,
+            423
+          ],
+          "n_atoms": 141,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 5.630643715150654
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 5.141394262202084,
+          "time_std": 0.0,
+          "times": [
+            5.141394262202084
+          ],
+          "hvp_count": 306,
+          "hessian_shape": [
+            423,
+            423
+          ],
+          "n_atoms": 141,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 5.141394262202084
+          }
+        }
+      }
+    },
+    {
+      "filename": "100.xyz",
+      "n_atoms": 300,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 12.694589181803167,
+          "time_std": 0.0,
+          "times": [
+            12.694589181803167
+          ],
+          "hvp_count": 900,
+          "hessian_shape": [
+            900,
+            900
+          ],
+          "n_atoms": 300,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 12.694589181803167
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 10.733835738152266,
+          "time_std": 0.0,
+          "times": [
+            10.733835738152266
+          ],
+          "hvp_count": 591,
+          "hessian_shape": [
+            900,
+            900
+          ],
+          "n_atoms": 300,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 10.733835738152266
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 7.686992245726287,
+          "time_std": 0.0,
+          "times": [
+            7.686992245726287
+          ],
+          "hvp_count": 390,
+          "hessian_shape": [
+            900,
+            900
+          ],
+          "n_atoms": 300,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 7.686992245726287
+          }
+        }
+      }
+    },
+    {
+      "filename": "190.xyz",
+      "n_atoms": 570,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 24.216551613993943,
+          "time_std": 0.0,
+          "times": [
+            24.216551613993943
+          ],
+          "hvp_count": 1710,
+          "hessian_shape": [
+            1710,
+            1710
+          ],
+          "n_atoms": 570,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 24.216551613993943
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 18.9006504425779,
+          "time_std": 0.0,
+          "times": [
+            18.9006504425779
+          ],
+          "hvp_count": 807,
+          "hessian_shape": [
+            1710,
+            1710
+          ],
+          "n_atoms": 570,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 18.9006504425779
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 11.300194815732539,
+          "time_std": 0.0,
+          "times": [
+            11.300194815732539
+          ],
+          "hvp_count": 462,
+          "hessian_shape": [
+            1710,
+            1710
+          ],
+          "n_atoms": 570,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 11.300194815732539
+          }
+        }
+      }
+    },
+    {
+      "filename": "237.xyz",
+      "n_atoms": 711,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 36.980298813432455,
+          "time_std": 0.0,
+          "times": [
+            36.980298813432455
+          ],
+          "hvp_count": 2133,
+          "hessian_shape": [
+            2133,
+            2133
+          ],
+          "n_atoms": 711,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 36.980298813432455
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 26.53393122088164,
+          "time_std": 0.0,
+          "times": [
+            26.53393122088164
+          ],
+          "hvp_count": 924,
+          "hessian_shape": [
+            2133,
+            2133
+          ],
+          "n_atoms": 711,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 26.53393122088164
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 14.90195968002081,
+          "time_std": 0.0,
+          "times": [
+            14.90195968002081
+          ],
+          "hvp_count": 495,
+          "hessian_shape": [
+            2133,
+            2133
+          ],
+          "n_atoms": 711,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 14.90195968002081
+          }
+        }
+      }
+    },
+    {
+      "filename": "573.xyz",
+      "n_atoms": 1719,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 225.16621765121818,
+          "time_std": 0.0,
+          "times": [
+            225.16621765121818
+          ],
+          "hvp_count": 5157,
+          "hessian_shape": [
+            5157,
+            5157
+          ],
+          "n_atoms": 1719,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 225.16621765121818
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 87.55960440263152,
+          "time_std": 0.0,
+          "times": [
+            87.55960440263152
+          ],
+          "hvp_count": 1173,
+          "hessian_shape": [
+            5157,
+            5157
+          ],
+          "n_atoms": 1719,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 87.55960440263152
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 42.28685483150184,
+          "time_std": 0.0,
+          "times": [
+            42.28685483150184
+          ],
+          "hvp_count": 567,
+          "hessian_shape": [
+            5157,
+            5157
+          ],
+          "n_atoms": 1719,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 42.28685483150184
+          }
+        }
+      }
+    },
+    {
+      "filename": "964.xyz",
+      "n_atoms": 2892,
+      "methods": {
+        "naive": {
+          "method": "naive",
+          "time": 664.9750029873103,
+          "time_std": 0.0,
+          "times": [
+            664.9750029873103
+          ],
+          "hvp_count": 8676,
+          "hessian_shape": [
+            8676,
+            8676
+          ],
+          "n_atoms": 2892,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 664.9750029873103
+          }
+        },
+        "star": {
+          "method": "star",
+          "time": 169.82186059094965,
+          "time_std": 0.0,
+          "times": [
+            169.82186059094965
+          ],
+          "hvp_count": 1284,
+          "hessian_shape": [
+            8676,
+            8676
+          ],
+          "n_atoms": 2892,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 169.82186059094965
+          }
+        },
+        "acyclic": {
+          "method": "acyclic",
+          "time": 79.4899592557922,
+          "time_std": 0.0,
+          "times": [
+            79.4899592557922
+          ],
+          "hvp_count": 609,
+          "hessian_shape": [
+            8676,
+            8676
+          ],
+          "n_atoms": 2892,
+          "timing_breakdown": {
+            "coloring_s": 0.0,
+            "hvp_loop_s": 0.0,
+            "recovery_s": 0.0,
+            "overhead_s": 79.4899592557922
+          }
+        }
+      }
+    }
+  ]
+}
