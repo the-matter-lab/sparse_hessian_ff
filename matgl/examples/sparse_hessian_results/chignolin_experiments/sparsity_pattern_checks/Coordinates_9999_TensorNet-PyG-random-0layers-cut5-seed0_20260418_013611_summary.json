@@ -1,0 +1,27 @@
+{
+  "cutoff_angstrom": 5.0,
+  "device": "cuda",
+  "graph": {
+    "candidate_nonzeros": 99846,
+    "extra_nonzeros": 0,
+    "jaccard": 1.0,
+    "missing_nonzeros": 0,
+    "overlap_nonzeros": 99846,
+    "reference_nonzeros": 99846,
+    "union_nonzeros": 99846
+  },
+  "graph_is_symmetric": true,
+  "model": null,
+  "model_tag": "TensorNet-PyG-random-0layers-cut5-seed0",
+  "naive_nonzeros": 99846,
+  "ndof": 498,
+  "num_atoms": 166,
+  "num_layers": 0,
+  "preset": "chignolin",
+  "pyg_tensornet": true,
+  "random_chgnet_num_blocks": null,
+  "random_seed": 0,
+  "random_tensornet_nblocks": 0,
+  "sparsity_graph_hops": 1,
+  "xyz": "/h/28/lucahiede/Projects/sparse_hessian_ff/data/Chignolin/Coordinates_9999.xyz"
+}
