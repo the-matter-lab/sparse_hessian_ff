@@ -1,0 +1,386 @@
+[
+  {
+    "archive": "/h/28/lucahiede/Projects/sparse_hessian_ff/matgl/examples/sparse_hessian_results/abeta40_experiments/sparsity_pattern_recovery_checks/most_compact_tensornet_0interaction_5A_smallest_last_20260430_103429_patterns.npz",
+    "coloring_ordering": "SMALLEST_LAST",
+    "cutoff_angstrom": 5.0,
+    "errors": {
+      "acyclic_max_abs_error_vs_naive": 2.0489096641540527e-08,
+      "star_max_abs_error_vs_naive": 1.955777406692505e-08
+    },
+    "geometry": "most_compact",
+    "graph_pattern": {
+      "fraction": 0.17996442992807687,
+      "nonzeros": 579204,
+      "symmetric": true
+    },
+    "methods": {
+      "acyclic": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.04142241179943085,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.17958287814329693,
+            "nonzeros": 577976,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.1799588371494726,
+            "nonzeros": 579186,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.0003759590061756704,
+            "nonzeros": 1210,
+            "symmetric": true
+          }
+        }
+      },
+      "naive": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.04142242297530174,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.1795511857312061,
+            "nonzeros": 577874,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.17996442992807687,
+            "nonzeros": 579204,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.00041324419687077825,
+            "nonzeros": 1330,
+            "symmetric": true
+          }
+        }
+      },
+      "star": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.04142242297530174,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.1795511857312061,
+            "nonzeros": 577874,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.17996442992807687,
+            "nonzeros": 579204,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.00041324419687077825,
+            "nonzeros": 1330,
+            "symmetric": true
+          }
+        }
+      }
+    },
+    "model_tag": "tensornet_0interaction_5A",
+    "nblocks": 0,
+    "ndof": 1794,
+    "num_atoms": 598,
+    "seed": 0,
+    "sparsity_graph_hops": 1,
+    "threshold": 1e-10
+  },
+  {
+    "archive": "/h/28/lucahiede/Projects/sparse_hessian_ff/matgl/examples/sparse_hessian_results/abeta40_experiments/sparsity_pattern_recovery_checks/most_compact_tensornet_1interaction_5A_smallest_last_20260430_103429_patterns.npz",
+    "coloring_ordering": "SMALLEST_LAST",
+    "cutoff_angstrom": 5.0,
+    "errors": {
+      "acyclic_max_abs_error_vs_naive": 1.4901161193847656e-08,
+      "star_max_abs_error_vs_naive": 1.6298145055770874e-08
+    },
+    "geometry": "most_compact",
+    "graph_pattern": {
+      "fraction": 0.5118455050838358,
+      "nonzeros": 1647342,
+      "symmetric": true
+    },
+    "methods": {
+      "acyclic": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.02745410054922104,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.25571675186332743,
+            "nonzeros": 823008,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.5097295705118884,
+            "nonzeros": 1640532,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.25401281864856096,
+            "nonzeros": 817524,
+            "symmetric": true
+          }
+        }
+      },
+      "naive": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.027454113587737083,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.2510265855838053,
+            "nonzeros": 807913,
+            "symmetric": false
+          },
+          "exact_nonzero": {
+            "fraction": 0.511744835068959,
+            "nonzeros": 1647018,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.26071824948515365,
+            "nonzeros": 839105,
+            "symmetric": false
+          }
+        }
+      },
+      "star": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.027454104274511337,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.25102689629372776,
+            "nonzeros": 807914,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.511744835068959,
+            "nonzeros": 1647018,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.2607179387752312,
+            "nonzeros": 839104,
+            "symmetric": true
+          }
+        }
+      }
+    },
+    "model_tag": "tensornet_1interaction_5A",
+    "nblocks": 1,
+    "ndof": 1794,
+    "num_atoms": 598,
+    "seed": 0,
+    "sparsity_graph_hops": 2,
+    "threshold": 1e-10
+  },
+  {
+    "archive": "/h/28/lucahiede/Projects/sparse_hessian_ff/matgl/examples/sparse_hessian_results/abeta40_experiments/sparsity_pattern_recovery_checks/most_extended_tensornet_0interaction_5A_smallest_last_20260430_103429_patterns.npz",
+    "coloring_ordering": "SMALLEST_LAST",
+    "cutoff_angstrom": 5.0,
+    "errors": {
+      "acyclic_max_abs_error_vs_naive": 2.7939677238464355e-08,
+      "star_max_abs_error_vs_naive": 3.3527612686157227e-08
+    },
+    "geometry": "most_extended",
+    "graph_pattern": {
+      "fraction": 0.11599982103108467,
+      "nonzeros": 373338,
+      "symmetric": true
+    },
+    "methods": {
+      "acyclic": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.041891731321811676,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.1158059380394701,
+            "nonzeros": 372714,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.1159911211532558,
+            "nonzeros": 373310,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.0001851831137857021,
+            "nonzeros": 596,
+            "symmetric": true
+          }
+        }
+      },
+      "naive": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.04189172014594078,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.11578108124567336,
+            "nonzeros": 372634,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.11599982103108467,
+            "nonzeros": 373338,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.00021873978541129914,
+            "nonzeros": 704,
+            "symmetric": true
+          }
+        }
+      },
+      "star": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.04189170524477959,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.11578108124567336,
+            "nonzeros": 372634,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.11599982103108467,
+            "nonzeros": 373338,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.00021873978541129914,
+            "nonzeros": 704,
+            "symmetric": true
+          }
+        }
+      }
+    },
+    "model_tag": "tensornet_0interaction_5A",
+    "nblocks": 0,
+    "ndof": 1794,
+    "num_atoms": 598,
+    "seed": 0,
+    "sparsity_graph_hops": 1,
+    "threshold": 1e-10
+  },
+  {
+    "archive": "/h/28/lucahiede/Projects/sparse_hessian_ff/matgl/examples/sparse_hessian_results/abeta40_experiments/sparsity_pattern_recovery_checks/most_extended_tensornet_1interaction_5A_smallest_last_20260430_103429_patterns.npz",
+    "coloring_ordering": "SMALLEST_LAST",
+    "cutoff_angstrom": 5.0,
+    "errors": {
+      "acyclic_max_abs_error_vs_naive": 1.955777406692505e-08,
+      "star_max_abs_error_vs_naive": 1.4901161193847656e-08
+    },
+    "geometry": "most_extended",
+    "graph_pattern": {
+      "fraction": 0.25800046979340274,
+      "nonzeros": 830358,
+      "symmetric": true
+    },
+    "methods": {
+      "acyclic": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.025038480758666992,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.1621483229742645,
+            "nonzeros": 521864,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.2549393556373344,
+            "nonzeros": 820506,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.09279103266306989,
+            "nonzeros": 298642,
+            "symmetric": true
+          }
+        }
+      },
+      "naive": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.025038477033376694,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.1496043419847404,
+            "nonzeros": 481492,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.25800046979340274,
+            "nonzeros": 830358,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.10839612780866234,
+            "nonzeros": 348866,
+            "symmetric": true
+          }
+        }
+      },
+      "star": {
+        "hessian_shape": [
+          1794,
+          1794
+        ],
+        "max_abs_hessian_element": 0.02503848262131214,
+        "patterns": {
+          "abs_gt_threshold": {
+            "fraction": 0.1496043419847404,
+            "nonzeros": 481492,
+            "symmetric": true
+          },
+          "exact_nonzero": {
+            "fraction": 0.25800046979340274,
+            "nonzeros": 830358,
+            "symmetric": true
+          },
+          "tiny_nonzero_abs_le_threshold": {
+            "fraction": 0.10839612780866234,
+            "nonzeros": 348866,
+            "symmetric": true
+          }
+        }
+      }
+    },
+    "model_tag": "tensornet_1interaction_5A",
+    "nblocks": 1,
+    "ndof": 1794,
+    "num_atoms": 598,
+    "seed": 0,
+    "sparsity_graph_hops": 2,
+    "threshold": 1e-10
+  }
+]

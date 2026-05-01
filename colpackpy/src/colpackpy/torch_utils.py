@@ -120,6 +120,87 @@ def hessian_vector_product_from_finite_differences(
     """
     return (g(x + v * delta) - g(x - v * delta)) / (2 * delta)
 
+
+def compute_sparse_hessian_from_hvp_fn(
+    hvp_fn: Callable[[Tensor, Tensor], Tensor],
+    x: Tensor,
+    sparsity_pattern: np.ndarray,
+    n: int,
+    *,
+    coloring_algorithm: str = "ACYCLIC",
+    ordering: str = "SMALLEST_LAST",
+    verify: bool = False,
+    return_stats: bool = False,
+    return_seed_matrix: bool = False,
+    hessian_return_type: str = "sparse",
+) -> Tensor | tuple:
+    """ColPack-compressed sparse Hessian recovery using a supplied HVP routine.
+
+    Same coloring, Y = H @ S assembly, and ``recover_matrix`` path as
+    ``compute_sparse_hessian_fn``, but ``hvp_fn(x, v)`` must implement the
+    Hessian-vector product :math:`H(x)\\,v` (same tensor layout as ``x``).
+
+    Args:
+        hvp_fn: ``(x, v) -> H @ v`` with ``v`` the same shape as ``x`` (after reshape).
+        x: Point at which the Hessian is evaluated.
+        sparsity_pattern: Sparsity pattern as (m, 2) array of edges.
+        n: Number of scalar components of ``x`` (graph coloring dimension).
+        coloring_algorithm: ColPack coloring algorithm to use.
+        ordering: Node ordering strategy.
+        verify: If True, verify that the recovered Hessian is consistent.
+        return_stats: If True, append coloring / compression statistics.
+        return_seed_matrix: If True, include the seed matrix ``S`` in the return.
+        hessian_return_type: ``"sparse"`` or dense recovery, as in ``recover_matrix``.
+
+    Returns:
+        Same tuple conventions as ``compute_sparse_hessian_fn``.
+    """
+    device = x.device
+    dtype = x.dtype
+    coloring_algorithm = coloring_algorithm.upper()
+    ordering = ordering.upper()
+
+    S_np, colors_np, comps = get_seeds_from_pattern(
+        sparsity_pattern, n, ordering, coloring_algorithm
+    )
+    S = torch.tensor(S_np, dtype=dtype, device=device)
+    num_colors = S.shape[1]
+
+    for i in range(0, num_colors):
+        tangent = S[:, i].reshape_as(x)
+        Y_block = hvp_fn(x, tangent).reshape(S.shape[0], 1)
+        if i == 0:
+            Y = Y_block
+        else:
+            Y = torch.cat([Y, Y_block], dim=1)
+
+    H = recover_matrix(
+        recover_from=coloring_algorithm,
+        edges=sparsity_pattern,
+        n=n,
+        Y=Y,
+        vertex_colors=colors_np,
+        acyclic_components=comps,
+        reconstruct_sparsely=(hessian_return_type == "sparse"),
+        verify=verify,
+    )
+
+    stats = {
+        "num_colors": num_colors,
+        "num_hvps": num_colors,
+        "dimension": n,
+        "num_edges": len(sparsity_pattern),
+        "compression_ratio": n / num_colors,
+    }
+    result: Tensor | tuple = H
+    if return_seed_matrix:
+        result = H, S
+    if return_stats:
+        result = result, stats
+
+    return result
+
+
 def compute_sparse_hessian_fn(
     f: Callable[[Tensor], Tensor],
     x: Tensor,
@@ -165,59 +246,21 @@ def compute_sparse_hessian_fn(
         If both return_seed_matrix and return_stats are True, returns tuple of (Hessian, seed_matrix, stats)
         If neither return_seed_matrix nor return_stats are True, returns Hessian
     """
-    device = x.device
-    dtype = x.dtype
-    coloring_algorithm = coloring_algorithm.upper()
-    ordering = ordering.upper()
-
-    # Get ColPack seeds and coloring
-    S_np, colors_np, comps = get_seeds_from_pattern(
-        sparsity_pattern, n, ordering, coloring_algorithm
+    hvp_fn = get_hessian_vector_product_fn(
+        f, use_finite_differences=use_finite_differences, delta=delta
     )
-    S = torch.tensor(S_np, dtype=dtype, device=device)
-    num_colors = S.shape[1]
-
-    # Create HVP function and vectorize it
-    hvp_fn = get_hessian_vector_product_fn(f, use_finite_differences=use_finite_differences, delta=delta)
-
-    # Compute compressed Hessian: Y = H @ S
-    for i in range(0, num_colors):
-        # Match tangent shape to x so this works for both vector and tensor inputs.
-        tangent = S[:, i].reshape_as(x)
-        Y_block = hvp_fn(x, tangent).reshape(S.shape[0], 1)
-        if i == 0:
-            Y = Y_block
-        else:
-            Y = torch.cat([Y, Y_block], dim=1)
-
-
-    # Recover the full Hessian from compressed representation
-    H = recover_matrix(
-        recover_from=coloring_algorithm,
-        edges=sparsity_pattern,
-        n=n,
-        Y=Y,
-        vertex_colors=colors_np,
-        acyclic_components=comps,
-        reconstruct_sparsely=(hessian_return_type == "sparse"),
+    return compute_sparse_hessian_from_hvp_fn(
+        hvp_fn,
+        x,
+        sparsity_pattern,
+        n,
+        coloring_algorithm=coloring_algorithm,
+        ordering=ordering,
         verify=verify,
+        return_stats=return_stats,
+        return_seed_matrix=return_seed_matrix,
+        hessian_return_type=hessian_return_type,
     )
-
-    # Compute statistics
-    stats = {
-        'num_colors': num_colors,
-        'num_hvps': num_colors,
-        'dimension': n,
-        'num_edges': len(sparsity_pattern),
-        'compression_ratio': n / num_colors,
-    }
-    result = H
-    if return_seed_matrix:
-        result = H, S
-    if return_stats:
-        result = result, stats
-
-    return result
 
 
 
