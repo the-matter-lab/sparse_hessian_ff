@@ -2,5 +2,22 @@
 data/Abeta40_PED00531/pdbfile.pdb
 **/sparsity_pattern_data_slowest_964.xyz_*.npz
 
+# Local/editor files
+.vscode/
+*.code-workspace
+
+# Python/build artifacts
+__pycache__/
+*.py[cod]
+*.so
+*.so.*
+*.egg-info/
+build/
+dist/
+
+# Local environment exports/backups
+*_backup_*.yml
+*_backup_*.yaml
+
 # Archived experiment outputs (removed from repo)
 matgl/examples/sparse_hessian_results_old/

@@ -422,7 +422,7 @@ def get_valid_xy_sorted_by_x(x_vals, y_vals, require_positive_y=False):
 # Plot 1: Error vs Cutoff (fixed to show all algorithms)
 plt.figure(figsize=LINE_FIGSIZE)
 for alg in algorithms:
-    valid_cutoffs, valid_errors = get_valid_xy(cutoffs, errors[alg], require_positive_y=True)
+    valid_cutoffs, valid_errors = get_valid_xy_sorted_by_x(cutoffs, errors[alg], require_positive_y=True)
     if valid_errors.size > 0:
         plt.plot(
             valid_cutoffs,
@@ -449,7 +449,7 @@ print(f"\nSaved error plot to: {error_plot_path}")
 # Plot 2: Number of HVPs vs Cutoff
 plt.figure(figsize=LINE_FIGSIZE)
 for alg in algorithms:
-    valid_cutoffs, valid_hvps = get_valid_xy(cutoffs, n_hvps[alg], require_positive_y=False)
+    valid_cutoffs, valid_hvps = get_valid_xy_sorted_by_x(cutoffs, n_hvps[alg], require_positive_y=False)
     if valid_hvps.size > 0:
         plt.plot(
             valid_cutoffs,
@@ -516,7 +516,9 @@ print(f"Saved wall time vs cutoff plot to: {time_cutoff_plot_path}")
 # Plot 3: Eigenvalue relative error vs Cutoff
 plt.figure(figsize=LINE_FIGSIZE)
 for alg in algorithms:
-    valid_cutoffs, valid_eigenval_errors = get_valid_xy(cutoffs, eigenval_errors[alg], require_positive_y=True)
+    valid_cutoffs, valid_eigenval_errors = get_valid_xy_sorted_by_x(
+        cutoffs, eigenval_errors[alg], require_positive_y=True
+    )
     if valid_eigenval_errors.size > 0:
         plt.plot(
             valid_cutoffs,
@@ -543,7 +545,9 @@ print(f"Saved eigenvalue comparison plot to: {eigenval_plot_path}")
 # Plot 3b: All-eigenvalue relative error vs Cutoff
 plt.figure(figsize=LINE_FIGSIZE)
 for alg in algorithms:
-    valid_cutoffs, valid_eigenval_errors_all = get_valid_xy(cutoffs, eigenval_errors_all[alg], require_positive_y=True)
+    valid_cutoffs, valid_eigenval_errors_all = get_valid_xy_sorted_by_x(
+        cutoffs, eigenval_errors_all[alg], require_positive_y=True
+    )
     if valid_eigenval_errors_all.size > 0:
         plt.plot(
             valid_cutoffs,

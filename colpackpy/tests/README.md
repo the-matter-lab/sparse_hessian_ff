@@ -101,8 +101,8 @@ Cross-algorithm consistency checks:
 
 ```bash
 # From the project root
-export PYTHONPATH=$PYTHONPATH:/h/28/lucahiede/Projects/sparse_hessian_ff
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/h/28/lucahiede/Projects/sparse_hessian_ff/ColPack/build/cmake/mywork/lib/shared_library
+export PYTHONPATH=$PYTHONPATH:$(pwd)/colpackpy/src
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/colpackpy/src
 
 # Run all tests
 python -m unittest discover colpackpy/tests
@@ -140,7 +140,6 @@ pytest colpackpy/tests/test_recovery.py::TestStarRecovery::test_star_random_spar
 
 ```bash
 # Run the test file directly
-cd /h/28/lucahiede/Projects/sparse_hessian_ff
 python colpackpy/tests/test_recovery.py
 ```
 

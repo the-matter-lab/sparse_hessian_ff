@@ -4,9 +4,10 @@
 This script computes:
 1. a naive Hessian and its block-level sparsity pattern,
 2. the graph-based sparsity pattern from ``create_sparsity_pattern_from_graph``.
+3. When ``colpackpy`` is installed: star- and acyclic-recovered Hessians and their
+   sparsity patterns vs the naive reference (difference plots: missing / extra nonzeros).
 
-For each pattern it saves a plot, a difference plot against the naive reference,
-and a compressed ``.npz`` archive with the matrices and summary statistics.
+Nonzero structure uses exact ``H != 0`` (no epsilon threshold).
 
 TensorNet only: PyG (default) or DGL via ``Potential``, randomly initialized.
 """
@@ -34,6 +35,11 @@ sys.path.insert(0, str(REPO_ROOT / "matgl" / "src"))
 
 import matgl
 from matgl.apps.pes import Potential
+
+try:
+    from colpackpy.torch_utils import compute_sparse_hessian as _compute_sparse_hessian_pyg  # type: ignore[import-not-found]
+except ImportError:
+    _compute_sparse_hessian_pyg = None
 from matgl.ext.ase import Atoms2Graph, Atoms2GraphPYG, PESCalculator
 from matgl.graph.compute import create_sparsity_pattern_from_graph, num_graph_hops_for_hessian_sparsity
 from matgl.models import TensorNet
@@ -42,6 +48,7 @@ DEFAULT_XYZ_CHIGNOLIN = REPO_ROOT / "data" / "Chignolin" / "Coordinates_9999.xyz
 DEFAULT_XYZ_ABETA40 = REPO_ROOT / "data" / "Abeta40_PED00531" / "PED00531_model_0853_middle.xyz"
 DEFAULT_OUTPUT_CHIGNOLIN = SCRIPT_DIR / "sparse_hessian_results" / "chignolin_experiments" / "sparsity_pattern_checks"
 DEFAULT_OUTPUT_ABETA40 = SCRIPT_DIR / "sparse_hessian_results" / "abeta40_experiments" / "sparsity_pattern_checks"
+DEFAULT_COLORING_ORDERING = "SMALLEST_LAST"
 
 PATTERN_CMAP = ListedColormap(["white", "black"])
 DIFF_CMAP = ListedColormap(["white", "black", "#d62728", "#1f77b4"])
@@ -154,6 +161,56 @@ def naive_hessian_pyg(model: TensorNetPYG, graph, lat: torch.Tensor) -> np.ndarr
     return hessian.detach().cpu().numpy()
 
 
+def sparse_hessian_star_acyclic_pyg(
+    model: TensorNetPYG,
+    graph,
+    lat: torch.Tensor,
+    method: str,
+    ordering: str,
+) -> np.ndarray:
+    """Dense star/acyclic Hessian from PyG TensorNet (same path as ``HessianBenchmark._run_pyg_hessian``)."""
+    if _compute_sparse_hessian_pyg is None:
+        raise RuntimeError("colpackpy is required for star/acyclic Hessians")
+    if method not in ("star", "acyclic"):
+        raise ValueError(f"method must be 'star' or 'acyclic', got {method!r}")
+    device = next(model.parameters()).device
+    dtype = matgl.float_th
+    graph = graph.to(device)
+    graph.frac_coords = graph.frac_coords.to(device=device, dtype=dtype)
+    graph.pbc_offset = graph.pbc_offset.to(device=device, dtype=dtype)
+    lat = lat.to(device=device, dtype=dtype)
+    graph.pbc_offshift = torch.matmul(graph.pbc_offset, lat[0])
+    pos = torch.matmul(graph.frac_coords, lat[0]).detach().clone().requires_grad_(True)
+    graph.pos = pos
+
+    energy = model(graph, None)
+    if energy.dim() > 0:
+        energy = energy.sum()
+
+    sparsity_hops = num_graph_hops_for_hessian_sparsity(model)
+    sparsity_pattern, n = create_sparsity_pattern_from_graph(graph, sparsity_hops)
+    if n != pos.numel():
+        raise RuntimeError(f"Sparsity n={n} != pos.numel()={pos.numel()}")
+    grads0 = torch.autograd.grad(energy, pos, create_graph=True, retain_graph=True)[0]
+    hessian_payload = _compute_sparse_hessian_pyg(
+        energy,
+        pos,
+        sparsity_pattern,
+        n,
+        method,
+        ordering=ordering,
+        precomputed_grads=grads0,
+        return_seed_matrix=False,
+        return_stats=False,
+        hessian_return_type="dense",
+    )
+    if isinstance(hessian_payload, tuple) and len(hessian_payload) == 2 and isinstance(hessian_payload[1], dict):
+        hessian_tensor = hessian_payload[0]
+    else:
+        hessian_tensor = hessian_payload  # type: ignore[assignment]
+    return hessian_tensor.detach().cpu().numpy()
+
+
 def edge_list_to_dense_pattern(edges: np.ndarray, n: int) -> np.ndarray:
     """Convert an edge list to a dense boolean matrix."""
     pattern = np.zeros((n, n), dtype=bool)
@@ -162,8 +219,8 @@ def edge_list_to_dense_pattern(edges: np.ndarray, n: int) -> np.ndarray:
     return pattern
 
 
-def hessian_to_atom_block_pattern(hessian: np.ndarray, atol: float) -> np.ndarray:
-    """Collapse a Cartesian Hessian into an atom-level 3x3 block sparsity pattern."""
+def hessian_to_atom_block_pattern(hessian: np.ndarray) -> np.ndarray:
+    """Collapse a Cartesian Hessian into an atom-level 3x3 block sparsity pattern (exact ``!= 0``)."""
     ndof = hessian.shape[0]
     if hessian.shape != (ndof, ndof):
         raise ValueError(f"Hessian must be square, got {hessian.shape}")
@@ -172,7 +229,7 @@ def hessian_to_atom_block_pattern(hessian: np.ndarray, atol: float) -> np.ndarra
 
     num_atoms = ndof // 3
     blocks = hessian.reshape(num_atoms, 3, num_atoms, 3).transpose(0, 2, 1, 3)
-    atom_pattern = np.any(blocks != 0.0, axis=(2, 3))
+    atom_pattern = np.any(blocks != 0, axis=(2, 3))
     atom_pattern |= atom_pattern.T
     return atom_pattern
 
@@ -197,6 +254,13 @@ def compare_patterns(reference: np.ndarray, candidate: np.ndarray) -> dict[str, 
         "union_nonzeros": int(union),
         "jaccard": float(overlap / union) if union else 1.0,
     }
+
+
+def max_abs_hessian_error(reference: np.ndarray, candidate: np.ndarray) -> float:
+    """Largest |H_ref - H_cand| over all elements."""
+    if reference.shape != candidate.shape:
+        raise ValueError(f"Shape mismatch: reference {reference.shape}, candidate {candidate.shape}")
+    return float(np.max(np.abs(reference.astype(np.float64) - candidate.astype(np.float64))))
 
 
 def _atom_adjacency_no_self_loops(graph, num_atoms: int):
@@ -311,7 +375,7 @@ def main() -> None:
         "--random-tensornet-nblocks",
         type=int,
         default=2,
-        help="TensorNet interaction blocks (random init)",
+        help="TensorNet interaction blocks (0 = embedding only, 1 = one block, …; default: 2).",
     )
     parser.add_argument(
         "--dgl-backend",
@@ -337,8 +401,14 @@ def main() -> None:
         action="store_true",
         help="Run the model and naive Hessian in float64 (overrides matgl.float_th) to rule out float32 noise.",
     )
+    parser.add_argument(
+        "--coloring-ordering",
+        default=DEFAULT_COLORING_ORDERING,
+        help=f"ColPack vertex ordering for star/acyclic (default: {DEFAULT_COLORING_ORDERING})",
+    )
     args = parser.parse_args()
 
+    args.coloring_ordering = args.coloring_ordering.upper()
     if args.float64:
         matgl.float_th = torch.float64
         matgl.float_np = np.float64
@@ -364,7 +434,8 @@ def main() -> None:
     print(f"Structure: {args.xyz}")
     print(f"Device:    {device}")
     print(f"Dtype:     {matgl.float_th}")
-    print("Threshold: exact zero comparison")
+    print(f"ColPack ordering: {args.coloring_ordering}")
+    print("Nonzeros: Hessian patterns use strict H != 0 (no epsilon cutoff)")
 
     atoms = read(str(args.xyz))
 
@@ -387,13 +458,13 @@ def main() -> None:
         print(f"Atoms:     {len(atoms)}")
         print(f"Layers:    {num_layers} (interaction blocks; graph sparsity uses +1 hop for tensor embedding)")
 
-        print("\n[1/4] Computing naive Hessian reference (PyG TensorNet)...")
+        print("\n[1/5] Computing naive Hessian reference (PyG TensorNet)...")
         hessian_naive = naive_hessian_pyg(model, graph, lat)
-        naive_atom_pattern = hessian_to_atom_block_pattern(hessian_naive, 0.0)
+        naive_atom_pattern = hessian_to_atom_block_pattern(hessian_naive)
         naive_cart_pattern = expand_atom_pattern(naive_atom_pattern)
         ndof = hessian_naive.shape[0]
 
-        print("\n[2/4] Building graph-based sparsity pattern (PyG graph)...")
+        print("\n[2/5] Building graph-based sparsity pattern (PyG graph)...")
         sparsity_hops = num_graph_hops_for_hessian_sparsity(model)
         print(f"Using {sparsity_hops} graph hops for receptive-field pattern")
         graph_edges, graph_n = create_sparsity_pattern_from_graph(graph, sparsity_hops)
@@ -415,20 +486,21 @@ def main() -> None:
         calc = PESCalculator(potential)
         graph_converter = Atoms2Graph(potential.model.element_types, potential.model.cutoff)
         graph, _, _ = graph_converter.get_graph(atoms)
+        potential.hessian_coloring_ordering = args.coloring_ordering
         num_layers = infer_num_layers(potential.model)
 
         print(f"Atoms:     {len(atoms)}")
         print(f"Layers:    {num_layers}")
 
-        print("\n[1/4] Computing naive Hessian reference...")
+        print("\n[1/5] Computing naive Hessian reference...")
         potential.hessian_algorithm = "naive"
         calc.calculate(atoms, properties=["hessian"])
         hessian_naive = np.asarray(calc.results["hessian"], dtype=float)
-        naive_atom_pattern = hessian_to_atom_block_pattern(hessian_naive, 0.0)
+        naive_atom_pattern = hessian_to_atom_block_pattern(hessian_naive)
         naive_cart_pattern = expand_atom_pattern(naive_atom_pattern)
         ndof = hessian_naive.shape[0]
 
-        print("\n[2/4] Building graph-based sparsity pattern...")
+        print("\n[2/5] Building graph-based sparsity pattern...")
         sparsity_hops = num_graph_hops_for_hessian_sparsity(potential.model)
         print(f"Using {sparsity_hops} graph hops for receptive-field pattern")
         graph_edges, graph_n = create_sparsity_pattern_from_graph(graph, sparsity_hops)
@@ -438,7 +510,32 @@ def main() -> None:
 
     graph_pattern = edge_list_to_dense_pattern(np.asarray(graph_edges, dtype=int), graph_n)
 
-    print("\n[3/4] Saving sparsity plots...")
+    recovered_cart: dict[str, np.ndarray] = {}
+    recovered_hessians: dict[str, np.ndarray] = {}
+    if _compute_sparse_hessian_pyg is not None:
+        print("\n[3/5] Star / acyclic recovered Hessians (colpackpy)...")
+        if use_pyg:
+            for method in ("star", "acyclic"):
+                print(f"  {method}...")
+                h = sparse_hessian_star_acyclic_pyg(model, graph, lat, method, args.coloring_ordering)
+                if h.shape != (ndof, ndof):
+                    raise RuntimeError(f"{method} Hessian shape {h.shape} does not match naive {(ndof, ndof)}")
+                recovered_hessians[method] = h
+                recovered_cart[method] = expand_atom_pattern(hessian_to_atom_block_pattern(h))
+        else:
+            for method in ("star", "acyclic"):
+                print(f"  {method}...")
+                potential.hessian_algorithm = method
+                calc.calculate(atoms, properties=["hessian"])
+                h = np.asarray(calc.results["hessian"], dtype=float)
+                if h.shape != (ndof, ndof):
+                    raise RuntimeError(f"{method} Hessian shape {h.shape} does not match naive {(ndof, ndof)}")
+                recovered_hessians[method] = h
+                recovered_cart[method] = expand_atom_pattern(hessian_to_atom_block_pattern(h))
+    else:
+        print("\n[3/5] Skipping star / acyclic (colpackpy not installed)...")
+
+    print("\n[4/5] Saving sparsity plots...")
     stem = f"{args.xyz.stem}_{model_tag}_{timestamp}"
     save_pattern_plot(naive_cart_pattern, args.output_dir / f"{stem}_naive_pattern.png", "Naive Hessian sparsity")
     save_pattern_plot(graph_pattern, args.output_dir / f"{stem}_graph_pattern.png", "Graph sparsity")
@@ -448,8 +545,21 @@ def main() -> None:
         args.output_dir / f"{stem}_graph_vs_naive_diff.png",
         "Graph sparsity vs naive",
     )
+    for method, patt in recovered_cart.items():
+        nm = method.capitalize()
+        save_pattern_plot(
+            patt,
+            args.output_dir / f"{stem}_{method}_pattern.png",
+            f"{nm} recovered sparsity",
+        )
+        save_difference_plot(
+            naive_cart_pattern,
+            patt,
+            args.output_dir / f"{stem}_{method}_vs_naive_diff.png",
+            f"{nm} recovered sparsity vs naive",
+        )
 
-    print("\n[4/4] Writing summary data...")
+    print("\n[5/5] Writing summary data...")
     graph_atom_pattern = graph_pattern.reshape(len(atoms), 3, len(atoms), 3).any(axis=(1, 3))
     distance_report = graph_distance_diagnostic(graph, naive_atom_pattern, graph_atom_pattern)
 
@@ -462,6 +572,8 @@ def main() -> None:
         "model_tag": model_tag,
         "random_tensornet_nblocks": args.random_tensornet_nblocks,
         "random_seed": args.random_seed,
+        "hessian_coloring_ordering": args.coloring_ordering,
+        "colpack_star_acyclic_ran": bool(recovered_cart),
         "device": device,
         "num_atoms": len(atoms),
         "num_layers": num_layers,
@@ -472,19 +584,32 @@ def main() -> None:
         "graph_is_symmetric": bool(np.array_equal(graph_pattern, graph_pattern.T)),
         "atom_level_distance_report": distance_report,
     }
+    for method in ("star", "acyclic"):
+        if method in recovered_cart:
+            summary[method] = compare_patterns(naive_cart_pattern, recovered_cart[method])
 
+    max_abs_vs_naive: dict[str, float] = {}
+    for method in ("star", "acyclic"):
+        if method in recovered_hessians:
+            max_abs_vs_naive[method] = max_abs_hessian_error(hessian_naive, recovered_hessians[method])
+    if max_abs_vs_naive:
+        summary["max_abs_hessian_error_vs_naive"] = max_abs_vs_naive
     npz_path = args.output_dir / f"{stem}_patterns.npz"
     json_path = args.output_dir / f"{stem}_summary.json"
-    np.savez_compressed(
-        npz_path,
-        naive_cart_pattern=naive_cart_pattern.astype(np.uint8),
-        naive_atom_pattern=naive_atom_pattern.astype(np.uint8),
-        graph_pattern=graph_pattern.astype(np.uint8),
-        hessian_naive=hessian_naive.astype(np.float32),
-        num_layers=np.asarray([num_layers], dtype=int),
-        sparsity_graph_hops=np.asarray([sparsity_hops], dtype=int),
-        num_atoms=np.asarray([len(atoms)], dtype=int),
-    )
+    npz_payload: dict[str, np.ndarray] = {
+        "naive_cart_pattern": naive_cart_pattern.astype(np.uint8),
+        "naive_atom_pattern": naive_atom_pattern.astype(np.uint8),
+        "graph_pattern": graph_pattern.astype(np.uint8),
+        "hessian_naive": hessian_naive.astype(np.float32),
+        "num_layers": np.asarray([num_layers], dtype=int),
+        "sparsity_graph_hops": np.asarray([sparsity_hops], dtype=int),
+        "num_atoms": np.asarray([len(atoms)], dtype=int),
+    }
+    for method in ("star", "acyclic"):
+        if method in recovered_cart:
+            npz_payload[f"{method}_cart_pattern"] = recovered_cart[method].astype(np.uint8)
+            npz_payload[f"hessian_{method}"] = recovered_hessians[method].astype(np.float32)
+    np.savez_compressed(npz_path, **npz_payload)
     save_summary(summary, json_path)
 
     print(f"Saved archive:  {npz_path}")
@@ -496,6 +621,20 @@ def main() -> None:
         f"missing={stats['missing_nonzeros']}, extra={stats['extra_nonzeros']}, "
         f"jaccard={stats['jaccard']:.6f}"
     )
+    for method in ("star", "acyclic"):
+        if method in recovered_cart:
+            st = summary[method]
+            print(
+                f"  {method:>11}: candidate={st['candidate_nonzeros']}, "
+                f"missing={st['missing_nonzeros']}, extra={st['extra_nonzeros']}, "
+                f"jaccard={st['jaccard']:.6f}"
+            )
+    err = summary.get("max_abs_hessian_error_vs_naive")
+    if err:
+        print("  max |H - H_naive| (elementwise):")
+        for method in ("star", "acyclic"):
+            if method in err:
+                print(f"    {method:>8}: {err[method]:.6e}")
     print(
         f"  atom-level: missing_pairs={distance_report['missing_atom_pairs']}, "
         f"extra_pairs={distance_report['extra_atom_pairs']}"

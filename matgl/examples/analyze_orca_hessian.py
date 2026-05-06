@@ -1,9 +1,10 @@
-"""Reanalyze sparse Hessian recovery using a parsed ORCA .hess reference.
+"""Analyze sparse Hessian recovery using a parsed ORCA .hess reference.
 
 The dense ORCA Cartesian Hessian is parsed once, then Hessian-vector products are
 emulated as ``H_true @ v`` for cutoff-based sparsity patterns. This mirrors
 ``reanalize_dft_hessian.py`` / ``sparse_hessian_cutoff_dft.py`` without running
-any quantum chemistry during the sweep.
+any quantum chemistry during the sweep. The script can also generate standalone
+signed, absolute-value, and off-diagonal ORCA Hessian plots.
 """
 
 from __future__ import annotations
@@ -19,8 +20,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 from ase import Atoms
+from matplotlib.colors import SymLogNorm
 from scipy.sparse import coo_matrix, kron
 
 
@@ -29,9 +30,6 @@ REPO_ROOT = SCRIPT_DIR.parent.parent
 COLPACK_SRC = REPO_ROOT / "colpackpy" / "src"
 if str(COLPACK_SRC) not in sys.path:
     sys.path.insert(0, str(COLPACK_SRC))
-
-from colpackpy.torch_utils import compute_sparse_hessian_from_hvp_fn  # type: ignore[import-not-found]
-from plot_orca_hessian import parse_orca_hessian
 
 
 BOHR_TO_ANGSTROM = 0.529177210903
@@ -47,7 +45,10 @@ REF_LINEWIDTH = 2.0
 MARKERSIZE = 10
 LINE_FIGSIZE = (10, 6)
 DEFAULT_HESSIAN = (
-    SCRIPT_DIR / "sparse_hessian_results" / "orca_chingolin" / "pbe_orca_hessian_chingolin.hess"
+    SCRIPT_DIR
+    / "sparse_hessian_results"
+    / "cutoff_experiments_chingolin_orca_pbe"
+    / "pbe_orca_hessian_chingolin.hess"
 )
 
 COLORS = {
@@ -92,6 +93,29 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--first-n-eigvals", type=int, default=10)
     parser.add_argument("--plot-dpi", type=int, default=300, help="DPI for saved PNG figures.")
     parser.add_argument(
+        "--plot-only",
+        action="store_true",
+        help="Only parse and plot the ORCA Hessian; skip sparse recovery reanalysis.",
+    )
+    parser.add_argument(
+        "--hessian-plot",
+        type=Path,
+        default=None,
+        help="Signed Hessian PNG path. Defaults to <output-dir>/hessian_orca_signed.png.",
+    )
+    parser.add_argument(
+        "--abs-hessian-plot",
+        type=Path,
+        default=None,
+        help="Absolute-value Hessian PNG path. Defaults to <output-dir>/hessian_orca_abs.png.",
+    )
+    parser.add_argument(
+        "--offdiag-abs-hessian-plot",
+        type=Path,
+        default=None,
+        help="Off-diagonal absolute-value Hessian PNG path. Defaults to <output-dir>/hessian_orca_offdiag_abs.png.",
+    )
+    parser.add_argument(
         "--save-csv",
         type=Path,
         default=None,
@@ -103,6 +127,55 @@ def parse_args() -> argparse.Namespace:
         help="Skip Hessian off-block and error heatmaps.",
     )
     return parser.parse_args()
+
+
+def next_nonempty_line(handle) -> str | None:
+    for line in handle:
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return None
+
+
+def parse_orca_hessian(path: Path) -> np.ndarray:
+    """Read the dense Hessian from ORCA's block-column ``$hessian`` section."""
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip() == "$hessian":
+                break
+        else:
+            raise ValueError(f"No $hessian section found in {path}")
+
+        try:
+            n_dof = int(next(handle).strip())
+        except StopIteration as exc:
+            raise ValueError(f"Missing Hessian dimension after $hessian in {path}") from exc
+
+        hessian = np.zeros((n_dof, n_dof), dtype=float)
+        filled = np.zeros((n_dof, n_dof), dtype=bool)
+
+        while True:
+            header = next_nonempty_line(handle)
+            if header is None:
+                raise ValueError(f"Unexpected end of file while reading $hessian in {path}")
+            if header.lstrip().startswith("$"):
+                break
+
+            columns = [int(token) for token in header.split()]
+            for _ in range(n_dof):
+                row_line = next(handle)
+                parts = row_line.split()
+                if len(parts) != len(columns) + 1:
+                    raise ValueError(f"Malformed Hessian row: {row_line.rstrip()!r}")
+                row = int(parts[0])
+                values = [float(token) for token in parts[1:]]
+                hessian[row, columns] = values
+                filled[row, columns] = True
+
+        if not filled.all():
+            missing = int(filled.size - filled.sum())
+            raise ValueError(f"Parsed Hessian is incomplete: {missing} entries missing")
+    return hessian
 
 
 def parse_orca_atoms(path: Path) -> Atoms:
@@ -304,6 +377,78 @@ def _imshow_abs_linear(ax, data: np.ndarray, title: str, cbar_label: str) -> Non
     plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label=cbar_label)
 
 
+def plot_signed_hessian(hessian: np.ndarray, output_path: Path, *, dpi: int) -> None:
+    abs_max = float(np.nanmax(np.abs(hessian))) if hessian.size else 1.0
+    if not np.isfinite(abs_max) or abs_max <= 0.0:
+        abs_max = 1.0
+
+    nonzero_abs = np.abs(hessian[np.nonzero(hessian)])
+    if nonzero_abs.size:
+        linthresh = max(float(np.percentile(nonzero_abs, 5)), abs_max * 1e-6)
+    else:
+        linthresh = abs_max * 1e-6
+
+    n_dof = hessian.shape[0]
+    side = float(np.clip(n_dof * 0.025, 8.0, 18.0))
+    fig, ax = plt.subplots(figsize=(side + 1.4, side + 1.0))
+    im = ax.imshow(
+        hessian,
+        cmap="coolwarm",
+        norm=SymLogNorm(linthresh=linthresh, vmin=-abs_max, vmax=abs_max, base=10),
+        aspect="equal",
+        interpolation="nearest",
+        rasterized=True,
+    )
+    ax.set_title(f"ORCA Cartesian Hessian ({n_dof} x {n_dof})")
+    ax.set_xlabel("column (Cartesian DOF)")
+    ax.set_ylabel("row (Cartesian DOF)")
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="Hessian value (a.u., symlog scale)")
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_abs_hessian(hessian: np.ndarray, output_path: Path, *, dpi: int, title: str | None = None) -> None:
+    n_dof = hessian.shape[0]
+    side = float(np.clip(n_dof * 0.025, 8.0, 18.0))
+    fig, ax = plt.subplots(figsize=(side + 1.4, side + 1.0))
+    _imshow_abs_linear(ax, hessian, title or f"|ORCA Cartesian Hessian| ({n_dof} x {n_dof})", "|value| (linear scale)")
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
+
+
+def save_reference_hessian_plots(
+    hessian: np.ndarray,
+    n_atoms: int,
+    output_dir: Path,
+    *,
+    dpi: int,
+    hessian_plot: Path | None = None,
+    abs_hessian_plot: Path | None = None,
+    offdiag_abs_hessian_plot: Path | None = None,
+) -> None:
+    signed_path = (hessian_plot or output_dir / "hessian_orca_signed.png").resolve()
+    abs_path = (abs_hessian_plot or output_dir / "hessian_orca_abs.png").resolve()
+    offdiag_path = (offdiag_abs_hessian_plot or output_dir / "hessian_orca_offdiag_abs.png").resolve()
+
+    plot_signed_hessian(hessian, signed_path, dpi=dpi)
+    print(f"Saved: {signed_path}")
+    plot_abs_hessian(hessian, abs_path, dpi=dpi)
+    print(f"Saved: {abs_path}")
+
+    hessian_offdiag = hessian - block_diag_3x3_per_atom(hessian, n_atoms)
+    plot_abs_hessian(
+        hessian_offdiag,
+        offdiag_path,
+        dpi=dpi,
+        title=r"$|H_{\mathrm{ORCA}} - \mathrm{blkdiag}_{3\times3}(H_{\mathrm{ORCA}})|$",
+    )
+    print(f"Saved: {offdiag_path}")
+
+
 def save_line_plot(
     output_path: Path,
     *,
@@ -407,6 +552,22 @@ def main() -> None:
     print(f"Complete atom-pair cutoff threshold: >= {max_dist:.6f} Angstrom")
     print(f"Cutoffs: {cutoffs.tolist()}")
     print(f"Algorithms: {algorithms}")
+
+    if not args.no_heatmaps or args.plot_only:
+        save_reference_hessian_plots(
+            hessian_ref,
+            n_atoms,
+            output_dir,
+            dpi=args.plot_dpi,
+            hessian_plot=args.hessian_plot,
+            abs_hessian_plot=args.abs_hessian_plot,
+            offdiag_abs_hessian_plot=args.offdiag_abs_hessian_plot,
+        )
+    if args.plot_only:
+        return
+
+    import torch
+    from colpackpy.torch_utils import compute_sparse_hessian_from_hvp_fn  # type: ignore[import-not-found]
 
     x_t = torch.zeros(n_dof, dtype=torch.float64)
     hessian_ref_t = torch.tensor(hessian_ref, dtype=torch.float64)
@@ -564,20 +725,6 @@ def main() -> None:
 
     if not args.no_heatmaps:
         side = _panel_side_inches(n_dof)
-        hessian_offdiag = hessian_ref - block_diag_3x3_per_atom(hessian_ref, n_atoms)
-        fig_gt, ax_gt = plt.subplots(figsize=(side + 1.6, side + 1.3))
-        _imshow_abs_linear(
-            ax_gt,
-            hessian_offdiag,
-            r"$|H_{\mathrm{ORCA}} - \mathrm{blkdiag}_{3\times3}(H_{\mathrm{ORCA}})|$",
-            "|value| (linear scale)",
-        )
-        fig_gt.tight_layout()
-        gt_path = output_dir / "hessian_orca_offdiag_abs.png"
-        fig_gt.savefig(gt_path, dpi=args.plot_dpi, bbox_inches="tight")
-        plt.close(fig_gt)
-        print(f"Saved: {gt_path}")
-
         for i, cutoff in enumerate(cutoffs):
             ncols = len(algorithms)
             fig_err, axes_err = plt.subplots(
