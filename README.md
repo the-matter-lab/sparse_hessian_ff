@@ -57,8 +57,7 @@ python matgl/examples/sparse_hessian_cutoff.py
 To reproduce the ORCA DFT cutoff plots:
 
 ```bash
-python matgl/examples/analyze_orca_hessian.py \
-  --hessian matgl/examples/sparse_hessian_results/cutoff_experiments_chingolin_orca_pbe/pbe_orca_hessian_chingolin.hess
+python matgl/examples/analyze_orca_hessian.py --hessian matgl/examples/sparse_hessian_results/cutoff_experiments_chingolin_orca_pbe/pbe_orca_hessian_chingolin.hess
 ```
 
 
