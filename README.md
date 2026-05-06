@@ -40,7 +40,7 @@ python -m unittest discover colpackpy/tests
 ```
 
 
-Run the main random-TensorNet benchmarks. These are GPU-oriented and can be expensive for the larger systems:
+Run the main random-TensorNet benchmarks. These are can be expensive for the larger systems:
 
 ```bash
 python matgl/examples/sparse_hessian_benchmark.py --alkanes 
@@ -48,29 +48,20 @@ python matgl/examples/sparse_hessian_benchmark.py --water-cluster
 python matgl/examples/sparse_hessian_benchmark.py --abeta40 
 ```
 
-Reanalyze the retained ORCA reference Hessian without rerunning quantum chemistry:
+To reproduce the CHGHNet cutoff plots:
+
+```bash
+python matgl/examples/sparse_hessian_cutoff.py 
+```
+
+To reproduce the ORCA DFT cutoff plots:
 
 ```bash
 python matgl/examples/analyze_orca_hessian.py \
   --hessian matgl/examples/sparse_hessian_results/cutoff_experiments_chingolin_orca_pbe/pbe_orca_hessian_chingolin.hess
 ```
 
-Run optional cutoff sweeps with fresh reference Hessians:
-
-```bash
-python matgl/examples/sparse_hessian_cutoff_xtb.py \
-  --structure data/Chignolin/Coordinates_9999.xyz \
-  --cutoffs 5,8,11,14
-
-python matgl/examples/sparse_hessian_cutoff_dft.py \
-  --structure data/Chignolin/Coordinates_9999.xyz \
-  --backend pyscf \
-  --basis sto-3g \
-  --cutoffs 5,8,11
-```
 
 All experiment outputs are written under `matgl/examples/sparse_hessian_results/` by default.
 
-## Anonymization Notes
 
-This artifact is prepared for anonymous review. Local absolute paths, personal filenames, editor settings, generated binaries, and full ORCA output logs have been removed. Retained result metadata uses repository-relative paths.
