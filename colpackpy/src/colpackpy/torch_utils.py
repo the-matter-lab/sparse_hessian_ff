@@ -1,5 +1,7 @@
 """PyTorch utilities for efficient sparse Hessian computation using ColPack."""
 
+from __future__ import annotations
+
 from typing import Callable
 import time
 import torch
@@ -273,7 +275,8 @@ def compute_sparse_hessian(y,
                         precomputed_grads=None, 
                         return_seed_matrix=False,
                         return_stats=False,
-                        hessian_return_type="sparse"
+                        hessian_return_type="sparse",
+                        create_graph=False,
                         ) -> Tensor | tuple[Tensor, Tensor]:
         """Compute sparse hessian using ColPack coloring algorithms.
         
@@ -288,6 +291,9 @@ def compute_sparse_hessian(y,
             return_seed_matrix: If True, return the seed matrix used to compress the Hessian
             return_stats: If True, return sparse timing/statistics metadata
             hessian_return_type: Return type for hessian calculation, sparse or dense arrays
+            create_graph: If True, HVPs keep an autograd graph so losses on the
+                recovered Hessian can differentiate into parameters that enter ``y``.
+                Default False (cheaper; use True only for Hessian-supervised training).
         Returns:
             Hessian tensor (sparse or dense based on hessian_return_type)
         """
@@ -333,15 +339,18 @@ def compute_sparse_hessian(y,
         if return_stats:
             sync_if_needed()
             t_hvp = time.perf_counter()
-        for i in range(S.shape[1]):
+        num_colors = S.shape[1]
+        for i in range(num_colors):
             # Use the pre-computed dot product
             grad_seed_product = grad_seed_products[i]
             
-            # Compute second derivative (HVP) using existing computation graph
+            # Second derivative (HVP). Keep the shared first-order graph for later
+            # colors, and whenever create_graph=True so higher-order grads stay valid.
             hvp_result = grad(
                 grad_seed_product,
                 x,
-                retain_graph=(i < S.shape[1] - 1)  # Only retain graph if not last iteration
+                create_graph=create_graph,
+                retain_graph=(i < num_colors - 1) or create_graph,
             )[0]
             
             if hvp_result is not None:
@@ -373,10 +382,13 @@ def compute_sparse_hessian(y,
             # Return as sparse COO matrix
             hessian_result = H_recovered
         else:
-            # Convert to dense tensor
-            if hasattr(H_recovered, 'toarray'):
-                H_recovered = H_recovered.toarray()
-            hessian_result = torch.tensor(H_recovered, dtype=x.dtype, device=x.device)
+            # PyTorch recovery already returns a dense tensor; keep its graph.
+            if isinstance(H_recovered, torch.Tensor):
+                hessian_result = H_recovered.to(dtype=x.dtype, device=x.device)
+            else:
+                if hasattr(H_recovered, 'toarray'):
+                    H_recovered = H_recovered.toarray()
+                hessian_result = torch.as_tensor(H_recovered, dtype=x.dtype, device=x.device)
         
         # Return seed matrix if requested
         if return_seed_matrix:

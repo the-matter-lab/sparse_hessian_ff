@@ -1818,6 +1818,65 @@ class TestPyTorchGradients(unittest.TestCase):
         rel_error = abs(scale_param.grad.item() - numerical_grad.item()) / (abs(numerical_grad.item()) + 1e-10)
         self.assertLess(rel_error, 1e-5)
 
+    def test_gradient_through_sparse_hessian_create_graph(self):
+        """Gradients w.r.t. a parameter that enters E, through HVP + sparse recovery.
+
+        Uses a quadratic E = 1/2 * scale^2 * x^T A x so H = scale^2 * A, and checks
+        that create_graph=True lets a loss on H differentiate into scale.
+        """
+        from colpackpy.torch_utils import compute_sparse_hessian
+
+        n = 8
+        A_np, edges = MatrixTestHelper.make_tridiagonal_matrix(n=n)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        A = torch.tensor(A_np, dtype=torch.float64, device=device)
+        x = torch.randn(n, dtype=torch.float64, device=device, requires_grad=True)
+        scale = torch.tensor([1.7], dtype=torch.float64, device=device, requires_grad=True)
+
+        # Quadratic energy; Hessian w.r.t. x is scale^2 * A (independent of x)
+        E = 0.5 * (scale ** 2) * torch.dot(x, A @ x)
+        grads = torch.autograd.grad(E, x, create_graph=True, retain_graph=True)[0]
+
+        H = compute_sparse_hessian(
+            E,
+            x,
+            edges,
+            n,
+            "ACYCLIC",
+            precomputed_grads=grads,
+            hessian_return_type="sparse",
+            create_graph=True,
+        )
+
+        # Recovered H should match scale^2 * A on the sparsity pattern
+        H_expected = (scale ** 2) * A
+        self.assertLess(torch.abs(H - H_expected).max().item(), 1e-10)
+
+        loss = H.sum()
+        loss.backward()
+
+        # d/d(scale) sum(scale^2 * A) = 2 * scale * sum(A)
+        expected = 2 * scale.item() * A.sum().item()
+        self.assertIsNotNone(scale.grad)
+        self.assertAlmostEqual(scale.grad.item(), expected, places=8)
+
+        # Default create_graph=False must not attach grads into scale
+        scale2 = torch.tensor([1.7], dtype=torch.float64, device=device, requires_grad=True)
+        x2 = x.detach().clone().requires_grad_(True)
+        E2 = 0.5 * (scale2 ** 2) * torch.dot(x2, A @ x2)
+        grads2 = torch.autograd.grad(E2, x2, create_graph=True, retain_graph=True)[0]
+        H2 = compute_sparse_hessian(
+            E2,
+            x2,
+            edges,
+            n,
+            "ACYCLIC",
+            precomputed_grads=grads2,
+            hessian_return_type="sparse",
+            create_graph=False,
+        )
+        self.assertFalse(H2.requires_grad)
+
 
 @unittest.skipUnless(HAS_TORCH, "PyTorch not available")
 class TestSparseHessianComputation(unittest.TestCase):
