@@ -6,7 +6,8 @@ data/Abeta40_PED00531/pdbfile.pdb
 .vscode/
 *.code-workspace
 
-# Python/build artifacts
+# Python/build artifacts.
+# libColPack.so.0 is produced by a local colpackpy build and is not published.
 __pycache__/
 *.py[cod]
 *.so
