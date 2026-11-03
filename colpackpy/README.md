@@ -6,6 +6,8 @@
 
 Python bindings for the [ColPack](https://github.com/CSCsw/ColPack) graph coloring library, enabling efficient sparse matrix recovery for Hessian matrices and general symmetric matrices.
 
+`ColPack/` in this directory is a vendored copy of [CSCsw/ColPack](https://github.com/CSCsw/ColPack). The official ColPack project is that repository. This package is not the official ColPack code and is not maintained by the ColPack authors. ColPack is BSD-3, copyright (c) 2018, Alex Pothen. See `ColPack/LICENSE`. Please cite Gebremedhin, Nguyen, Patwary, and Pothen, *ColPack: Graph coloring software for derivative computation and beyond*, ACM Transactions on Mathematical Software, 40(1), 2013.
+
 The typical use case is for sparse automatic differentiation: Autodiff lets use probe a Hessian using Hessian vector products (HVP). Given we know the sparsity pattern of a Hessian (or Jacobian, although the current release does not support this), using the coloring algorithms in this library we can construct our HVPs in such a way, that we extract the maximal information. A corresponding recovery algorithm then reconstructs the Hessian (or Jacobian).
 
 The recovery algorithms support numpy and torch and can therefore be differentiated. Sparse tensors are supported for large scale matrices.

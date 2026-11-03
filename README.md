@@ -1,26 +1,10 @@
 # Colour me shocked: Exact Molecular Hessians from local MLIPs in O(N) time using sparse differentiation
 
-Official code for:
-
-Luca Thiede\*, Andreas Burger\*, and Alán Aspuru-Guzik.
-*Colour me shocked: Exact Molecular Hessians from local MLIPs in O(N) time using sparse differentiation.*
-40th Conference on Neural Information Processing Systems (NeurIPS 2026).
-
-\*Equal contribution.
-
-```bibtex
-@inproceedings{thiede2026colourmeshocked,
-  title     = {Colour me shocked: Exact Molecular Hessians from local {MLIP}s in {O(N)} time using sparse differentiation},
-  author    = {Thiede, Luca and Burger, Andreas and Aspuru-Guzik, Al{\'a}n},
-  booktitle = {Advances in Neural Information Processing Systems},
-  year      = {2026},
-  note      = {40th Conference on Neural Information Processing Systems (NeurIPS 2026). Equal contribution: Thiede and Burger.}
-}
-```
+Official code for the NeurIPS 2026 paper. See [How to cite](#how-to-cite).
 
 The repository contains:
 
-- `colpackpy/`: Python bindings and PyTorch/NumPy recovery utilities for ColPack coloring.
+- `colpackpy/`: Python bindings and PyTorch/NumPy recovery utilities written for this paper. The C++ library under `colpackpy/ColPack/` is a vendored copy of [ColPack](https://github.com/CSCsw/ColPack). This repository is not the official ColPack project.
 - `matgl/src/`: MatGL source with the Hessian sparsity-pattern and Hessian-vector-product changes used by the experiments.
 - `matgl/examples/`: TensorNet, CHGNet, and ORCA experiment scripts.
 - `mace-off/examples/`: MACE-OFF23 benchmark and sparsity-pattern check. Model weights are downloaded separately.
@@ -30,7 +14,7 @@ The repository contains:
 
 ## Setup
 
-Use Python 3.10 on Linux. The ColPack extension requires CMake and a C++17 compiler. The TensorNet and CHGNet benchmarks require an NVIDIA GPU and the CUDA 12.1 PyTorch build below.
+Tested on Python 3.10 on Linux. The ColPack extension requires CMake and a C++17 compiler. The TensorNet and CHGNet benchmarks require an NVIDIA GPU and the CUDA 12.1 PyTorch build below.
 
 ```bash
 conda create -n sparse-hessian python=3.10 -y
@@ -110,11 +94,53 @@ python mace-off/examples/check_alkane_acyclic_sparsity.py
 
 `data/Abeta40_PED00531/` contains five Aβ40 conformers taken from Protein Ensemble Database entry [PED00531](https://proteinensemble.org/entries/PED00531) (ensemble e001). Selection details are in `data/Abeta40_PED00531/README.txt`. Cite that entry when you use these structures, and follow the database terms.
 
-Alkane, water-cluster, and Chignolin geometries used by the scripts are under `data/Alkanes`, `data/Water Cluster`, `data/water_cluster_all`, and `data/Chignolin`.
+`data/Water Cluster/` contains the SPC water-cluster geometries from [Gijón and Hernández](https://github.com/alfonsogijon/WaterClusters_PIMD), `examples/structures-SPC/`. Cite that work when using them. Details are in `data/Water Cluster/SOURCE.md`.
+
+Alkane and Chignolin geometries used by the scripts are under `data/Alkanes` and `data/Chignolin`.
 
 
-## Third-party licenses
+## Third-party code
+
+### ColPack
+
+Coloring uses [ColPack](https://github.com/CSCsw/ColPack) by Assefaw H. Gebremedhin, Duc Nguyen, Mostofa Ali Patwary, and Alex Pothen. The official source is that repository. `colpackpy/ColPack/` is a vendored copy so this paper code can build without a separate ColPack install, and it is not maintained by the ColPack authors. ColPack is BSD-3, copyright (c) 2018, Alex Pothen. See `colpackpy/ColPack/LICENSE`.
+
+If you use the coloring routines, please cite ColPack:
+
+Assefaw H. Gebremedhin, Duc Nguyen, Mostofa Ali Patwary, and Alex Pothen. *ColPack: Graph coloring software for derivative computation and beyond.* ACM Transactions on Mathematical Software, 40(1), 2013.
+
+```bibtex
+@article{gebremedhin2013colpack,
+  author  = {Gebremedhin, Assefaw H. and Nguyen, Duc and Patwary, Mostofa Ali and Pothen, Alex},
+  title   = {ColPack: Graph coloring software for derivative computation and beyond},
+  journal = {ACM Transactions on Mathematical Software},
+  volume  = {40},
+  number  = {1},
+  year    = {2013},
+  doi     = {10.1145/2513109.2513110}
+}
+```
+
+### Other dependencies
 
 - MatGL (`matgl/`, including the checkpoints in `matgl/pretrained_models/`) is BSD-3. See `matgl/LICENSE`.
-- ColPack (`colpackpy/ColPack/`) is BSD-3. See `colpackpy/ColPack/LICENSE`.
 - MACE-OFF23 weights, downloaded separately, are under the [Academic Software Licence](https://github.com/gabor1/ASL).
+
+
+## How to cite
+
+Luca Thiede\*, Andreas Burger\*, and Alán Aspuru-Guzik.
+*Colour me shocked: Exact Molecular Hessians from local MLIPs in O(N) time using sparse differentiation.*
+40th Conference on Neural Information Processing Systems (NeurIPS 2026).
+
+\*Equal contribution.
+
+```bibtex
+@inproceedings{thiede2026colourmeshocked,
+  title     = {Colour me shocked: Exact Molecular Hessians from local {MLIP}s in {O(N)} time using sparse differentiation},
+  author    = {Thiede, Luca and Burger, Andreas and Aspuru-Guzik, Al{\'a}n},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2026},
+  note      = {40th Conference on Neural Information Processing Systems (NeurIPS 2026). Equal contribution: Thiede and Burger.}
+}
+```
