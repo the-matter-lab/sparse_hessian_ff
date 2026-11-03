@@ -5,11 +5,10 @@ Official code for the NeurIPS 2026 paper. See [How to cite](#how-to-cite).
 The repository contains:
 
 - `colpackpy/`: Python bindings and PyTorch/NumPy recovery utilities written for this paper. The C++ library under `colpackpy/ColPack/` is a vendored copy of [ColPack](https://github.com/CSCsw/ColPack). This repository is not the official ColPack project.
-- `matgl/src/`: MatGL source with the Hessian sparsity-pattern and Hessian-vector-product changes used by the experiments.
-- `matgl/examples/`: TensorNet, CHGNet, and ORCA experiment scripts.
+- `matgl/`: a modified copy of [MatGL](https://github.com/materialsvirtuallab/matgl) with the Hessian sparsity-pattern and Hessian-vector-product changes used by the experiments. This is not the officially maintained MatGL repository. `matgl/examples/` holds the TensorNet, CHGNet, and ORCA experiment scripts.
 - `mace-off/examples/`: MACE-OFF23 benchmark and sparsity-pattern check. Model weights are downloaded separately.
 - `data/`: molecular structures used by the benchmark scripts.
-- `matgl/examples/sparse_hessian_results/`: retained result summaries and reference Hessians used for figure regeneration.
+- `matgl/examples/sparse_hessian_results/`: retained figures, plot data, and the ORCA reference Hessian used for figure regeneration.
 
 
 ## Setup
@@ -123,7 +122,7 @@ Assefaw H. Gebremedhin, Duc Nguyen, Mostofa Ali Patwary, and Alex Pothen. *ColPa
 
 ### Other dependencies
 
-- MatGL (`matgl/`, including the checkpoints in `matgl/pretrained_models/`) is BSD-3. See `matgl/LICENSE`.
+- MatGL (`matgl/`, including the checkpoints in `matgl/pretrained_models/`) is a vendored, modified copy of [materialsvirtuallab/matgl](https://github.com/materialsvirtuallab/matgl). The official project is that repository. This copy is not maintained by the MatGL authors. MatGL is BSD-3. See `matgl/LICENSE`.
 - MACE-OFF23 weights, downloaded separately, are under the [Academic Software Licence](https://github.com/gabor1/ASL).
 
 
