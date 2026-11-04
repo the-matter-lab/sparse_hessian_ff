@@ -128,18 +128,11 @@ Assefaw H. Gebremedhin, Duc Nguyen, Mostofa Ali Patwary, and Alex Pothen. *ColPa
 
 ## How to cite
 
-Luca Thiede\*, Andreas Burger\*, and Alán Aspuru-Guzik.
-*Colour me shocked: Exact Molecular Hessians from local MLIPs in O(N) time using sparse differentiation.*
-40th Conference on Neural Information Processing Systems (NeurIPS 2026).
-
-\*Equal contribution.
-
 ```bibtex
-@inproceedings{thiede2026colourmeshocked,
-  title     = {Colour me shocked: Exact Molecular Hessians from local {MLIP}s in {O(N)} time using sparse differentiation},
-  author    = {Thiede, Luca and Burger, Andreas and Aspuru-Guzik, Al{\'a}n},
-  booktitle = {Advances in Neural Information Processing Systems},
-  year      = {2026},
-  note      = {40th Conference on Neural Information Processing Systems (NeurIPS 2026). Equal contribution: Thiede and Burger.}
+@article{thiede2026colour,
+  title={Colour me shocked: Exact Molecular Hessians from local MLIPs in O (N) time using sparse differentiation!},
+  author={Thiede, Luca and Burger, Andreas and Aspuru-Guzik, Al{\'a}n},
+  journal={arXiv preprint arXiv:2609.24720},
+  year={2026}
 }
 ```

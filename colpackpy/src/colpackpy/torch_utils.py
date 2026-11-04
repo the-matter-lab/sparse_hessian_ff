@@ -270,7 +270,7 @@ def compute_sparse_hessian(y,
                         x, 
                         sparsity_pattern, 
                         n, 
-                        algorithm, 
+                        coloring_algorithm, 
                         ordering="SMALLEST_LAST",
                         precomputed_grads=None, 
                         return_seed_matrix=False,
@@ -285,7 +285,7 @@ def compute_sparse_hessian(y,
             x: input tensor with repect to which we want to get the Hessian of y
             sparsity_pattern: Sparsity pattern
             n: Number of dimensions of x
-            algorithm: Coloring algorithm ("star" | "acyclic" | "distance_two")
+            coloring_algorithm: Coloring algorithm ("star" | "acyclic" | "distance_two")
             ordering: Node ordering strategy for ColPack coloring
             precomputed_grads: Already computed gradients of y with respect to x to avoid recomputation
             return_seed_matrix: If True, return the seed matrix used to compress the Hessian
@@ -300,7 +300,7 @@ def compute_sparse_hessian(y,
 
 
         # Get coloring using specified algorithm
-        ALGORITHM = algorithm.upper()
+        ALGORITHM = coloring_algorithm.upper()
         ordering = ordering.upper()
         def sync_if_needed():
             if x.is_cuda:
